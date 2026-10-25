@@ -102,10 +102,10 @@ class Resource(_Base[Message]):
             await channel.close()
             self._active_channel_num -= 1
 
-    @before(_ensure_conn)
     async def try_close_connection(self) -> None:
 
         async with self._lock:
-            if self._active_channel_num > 0:
+            if self._active_channel_num > 0 or self._conn is None:
                 return None
             await self._required_conn.close()
+            self._conn = None
