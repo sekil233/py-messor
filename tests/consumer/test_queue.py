@@ -70,8 +70,8 @@ async def test_consumer_disabled_does_not_start_consume_loop():
     consumer = _consumer(resource, handler, enabled=False, pool_maxsize=1)
 
     await consumer.consume()
-    assert consumer._startup._task is None
-    assert consumer._pool_executor is None
+    assert consumer._worker is None
+    assert consumer._pool_executor._obj is None
 
 
 @run_async

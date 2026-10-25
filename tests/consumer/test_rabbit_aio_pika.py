@@ -81,6 +81,6 @@ async def test_disabled_consumer_does_not_connect():
 
     await consumer.consume()
 
-    assert consumer._startup._task is None
-    assert consumer._pool_executor is None
+    assert consumer._worker is None
+    assert consumer._pool_executor._obj is None
     assert world.urls == []
