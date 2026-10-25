@@ -1,3 +1,8 @@
+0.2.4
+-----
+
+* refactor: 消费循环、启动等待与关闭顺序收进 `core` 基类，后端只实现 `_on_startup`、`_consume_once`、`_drain`。`@queue` 用法不变
+
 0.2.3
 -----
 
