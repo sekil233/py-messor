@@ -1,0 +1,63 @@
+import pytest
+from pydantic import ValidationError
+
+from queue_func.core.config import Config
+from queue_func.serializer.orjson_ser import Serializer as OrjsonSerializer
+from queue_func.serializer.raw import Serializer as RawSerializer
+from queue_func.pool_executor.general import PoolExecutor
+
+
+async def noop():
+    return None
+
+
+def test_config_defaults():
+
+    config = Config(coro=noop)
+
+    assert config.coro is noop
+    assert config.serializer_cls is OrjsonSerializer
+    assert config.enable_consumer is True
+    assert config.consume_timeout == 2.0
+    assert config.consumer_pool_executor_cls is PoolExecutor
+    assert config.consumer_pool_maxsize == 200
+    assert config.publish_timeout is None
+
+
+def test_config_requires_coro():
+
+    with pytest.raises(ValidationError):
+        Config()
+
+
+def test_config_custom_values():
+
+    config = Config(
+        coro=noop,
+        serializer_cls=RawSerializer,
+        enable_consumer=False,
+        consume_timeout=0.1,
+        consumer_pool_maxsize=8,
+        publish_timeout=3.5,
+    )
+
+    assert config.serializer_cls is RawSerializer
+    assert config.enable_consumer is False
+    assert config.consume_timeout == 0.1
+    assert config.consumer_pool_maxsize == 8
+    assert config.publish_timeout == 3.5
+
+
+def test_config_ignores_unknown_fields():
+
+    config = Config(coro=noop, unknown=123)
+
+    assert not hasattr(config, "unknown")
+
+
+def test_config_is_frozen():
+
+    config = Config(coro=noop)
+
+    with pytest.raises(AttributeError):
+        config.enable_consumer = False
