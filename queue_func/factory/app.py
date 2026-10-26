@@ -3,7 +3,6 @@
 import typing as t
 
 from queue_func.core._inflight import wait_drained
-from queue_func.factory import builders as _builders  # noqa: F401 — register backends
 from queue_func.factory.backend import Backend
 from queue_func.factory.deco import QueueFunc
 from queue_func.factory.registry import build_broker
