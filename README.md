@@ -2,10 +2,10 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/sekil9529/queue-func/badge.svg?branch=master)](https://coveralls.io/github/sekil9529/queue-func)
 [![tests](https://github.com/sekil9529/queue-func/actions/workflows/tests.yml/badge.svg)](https://github.com/sekil9529/queue-func/actions?query=workflow%3Atests)
-[![Latest Version](https://img.shields.io/pypi/v/messor.svg)](https://pypi.org/project/messor/)
-[![Wheel](https://img.shields.io/pypi/wheel/messor.svg)](https://pypi.org/project/messor/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/messor.svg)](https://pypi.org/project/messor/)
-[![License](https://img.shields.io/pypi/l/messor.svg)](https://pypi.org/project/messor/)
+[![Latest Version](https://img.shields.io/pypi/v/py-messor.svg)](https://pypi.org/project/py-messor/)
+[![Wheel](https://img.shields.io/pypi/wheel/py-messor.svg)](https://pypi.org/project/py-messor/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/py-messor.svg)](https://pypi.org/project/py-messor/)
+[![License](https://img.shields.io/pypi/l/py-messor.svg)](https://pypi.org/project/py-messor/)
 
 把一个 `async def` 收成队列任务：`push` 投递，消费者在同一个事件循环里执行。
 
@@ -42,13 +42,13 @@ RabbitMQ 在消息交给消费池之后确认。处理函数出错不会把消�
 ## 安装
 
 ```shell
-pip install messor
+pip install py-messor
 ```
 
 使用 RabbitMQ：
 
 ```shell
-pip install "messor[rabbit]"
+pip install "py-messor[rabbit]"
 ```
 
 从仓库安装：
