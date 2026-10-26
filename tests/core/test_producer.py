@@ -57,11 +57,11 @@ async def test_publish_after_stop_raises_runtime_error():
     producer = _Producer(_resource(), publish_timeout=None)
 
     await producer.stop()
+    # stop() 是异步发起，join() 等待真正停止完成（_stopped 置位）后才拒绝新 publish
+    await producer.join()
 
     with pytest.raises(RuntimeError):
         await producer.publish((), {})
-
-    await producer.join()
 
 
 @run_async
