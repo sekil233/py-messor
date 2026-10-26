@@ -24,7 +24,7 @@ def _resource(world: FakeWorld) -> Resource:
     )
 
 
-def _consumer(resource: Resource, handler, *, enabled: bool = True) -> Consumer:
+def _consumer(resource: Resource, handler) -> Consumer:
 
     return Consumer(
         resource=resource,
@@ -32,7 +32,6 @@ def _consumer(resource: Resource, handler, *, enabled: bool = True) -> Consumer:
         prefetch_size=0,
         global_qos=False,
         coro=handler,
-        enable_consumer=enabled,
         consume_timeout=0.05,
         pool_executor_cls=PoolExecutor,
         pool_maxsize=2,
@@ -67,20 +66,3 @@ async def test_consume_unpacks_and_acks():
     assert channel.declared == [("jobs", {"passive": True})]
     assert channel.closed is True
     assert world.connection.closed is True
-
-
-@run_async
-async def test_disabled_consumer_does_not_connect():
-
-    world = FakeWorld()
-
-    async def handler():
-        raise AssertionError("should not run")
-
-    consumer = _consumer(_resource(world), handler, enabled=False)
-
-    await consumer.consume()
-
-    assert consumer._worker is None
-    assert consumer._pool_executor._obj is None
-    assert world.urls == []

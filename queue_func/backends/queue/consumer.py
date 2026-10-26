@@ -1,17 +1,23 @@
 # coding: utf-8
 
 import asyncio
-import typing as t
 
 from queue_func.serializer.base import Message
 from queue_func.backends.queue.resource import Resource
-from queue_func.pool_executor.base import BasePoolExecutor
+from queue_func.core._inflight import dec
 from queue_func.core.consumer import BaseConsumer as _BaseConsumer
 
 
 class Consumer(_BaseConsumer[Message, Resource]):
 
+    __slots__ = ()
 
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+        # coro 执行完成后 -1
+        self._on_coro_done.register(dec)
+    
     async def _consume_once(self) -> Message | None:
 
         queue = self._resource.queue

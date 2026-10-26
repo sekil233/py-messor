@@ -29,7 +29,6 @@ class Consumer(_BaseConsumer[bytes, Resource]):
             prefetch_size: int,
             global_qos: bool,
             coro: t.Callable[..., t.Coroutine],
-            enable_consumer: bool,
             consume_timeout: float,
             pool_executor_cls: type[BasePoolExecutor],
             pool_maxsize: int):
@@ -37,7 +36,6 @@ class Consumer(_BaseConsumer[bytes, Resource]):
         super().__init__(
             resource=resource,
             coro=coro,
-            enable_consumer=enable_consumer,
             consume_timeout=consume_timeout,
             pool_executor_cls=pool_executor_cls,
             pool_maxsize=pool_maxsize,

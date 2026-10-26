@@ -17,47 +17,43 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
     __slots__ = (
         "_resource",
         "_coro",
-        "_enable_consumer",
         "_pool_executor",
         "_consume_timeout",
+        "_on_coro_done",
         "_on_cleanup",
         "_stopped",
         "_startup",
         "_logger",
-        "_worker",
+        "_task",
     )
 
     def __init__(
             self,
             resource: Resource,
             coro: t.Callable[..., t.Coroutine],
-            enable_consumer: bool,
             consume_timeout: float,
             pool_executor_cls: type[BasePoolExecutor],
             pool_maxsize: int):
 
         self._resource = resource
         self._coro = coro
-        self._enable_consumer = enable_consumer
         self._pool_executor = LazyObject[BasePoolExecutor](pool_executor_cls, pool_maxsize)
         self._consume_timeout = consume_timeout
         self._stopped = False
+        self._on_coro_done = Hooks(order=HookOrder.LIFO)
         # 资源释放
         self._on_cleanup = Hooks(order=HookOrder.LIFO)
         self._startup = asyncio.Event()
         self._logger = logging.getLogger(__name__)
-        self._worker: asyncio.Task | None = None
+        self._task: asyncio.Task | None = None
 
     async def consume(self) -> None:
-
-        if not self._enable_consumer:
-            return None
 
         self._stopped = False
         # 未启动
         self._startup.clear()
         # 开启消费
-        self._worker = asyncio.create_task(self._consume_loop())
+        self._task = asyncio.create_task(self._consume_loop())
         # 等待启动完成
         await self._startup.wait()
         return None
@@ -100,7 +96,15 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         """消息处理"""
 
         coro_args, coro_kwargs = self._resource.serializer.unpack(message)
-        await self._pool_executor.obj.submit(self._coro, coro_args, coro_kwargs)
+        await self._pool_executor.obj.submit(self._run_coro, coro_args, coro_kwargs)
+
+    async def _run_coro(self, *coro_args, **coro_kwargs) -> None:
+        """执行用户协程，完成后触发 _on_coro_done 钩子（如 ack）"""
+
+        try:
+            await self._coro(*coro_args, **coro_kwargs) 
+        finally:
+            await self._on_coro_done.run(reset=False)
 
     async def _drain(self) -> None:
         """剩余处理"""
@@ -113,5 +117,5 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
 
     async def join(self) -> None:
         
-        if self._worker is not None:
-            await self._worker
+        if self._task is not None:
+            await self._task

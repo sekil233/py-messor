@@ -73,7 +73,6 @@ def _queue_impl(
 def queue(
         backend: t.Literal[Backend.QUEUE],
         *,
-        enable_consumer: bool = ...,
         consume_timeout: float = ...,
         consumer_pool_executor_cls: type["BasePoolExecutor"] = ...,
         consumer_pool_maxsize: int = ...,
@@ -97,8 +96,7 @@ def queue(
         queue_passive: bool = ...,
         queue_auto_delete: bool = ...,
         queue_arguments: dict[str, t.Any] | None = ...,
-        serializer_cls: type["BaseSerializer"] = ...,
-        enable_consumer: bool = ...,
+        serializer_cls: type["BaseSerializer[bytes]"] = ...,
         consume_timeout: float = ...,
         consumer_pool_executor_cls: type["BasePoolExecutor"] = ...,
         consumer_pool_maxsize: int = ...,

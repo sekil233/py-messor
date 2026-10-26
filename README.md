@@ -126,8 +126,6 @@ poetry run python examples/demo_queue.py
 
 `url` 和 `queue_name` 必填。`enable_declare_queue=True` 时，队列不存在会创建。默认交换机名是 `""`，路由键默认用队列名。已经存在的队列再声明时，持久化等参数必须和代理上的一致。
 
-只投递、不消费的进程把 `enable_consumer` 设为 `False`。
-
 ```python
 import asyncio
 

@@ -97,7 +97,7 @@ async def test_deco_push_accepts_kwargs():
 @run_async
 async def test_deco_push_timeout_overrides_config():
 
-    @queue(Backend.QUEUE, enable_consumer=False, maxsize=1, publish_timeout=None)
+    @queue(Backend.QUEUE, maxsize=1, publish_timeout=None)
     async def work(n: int):
         return n
 

@@ -27,7 +27,6 @@ class Config:
 
     ## consumer
     coro: t.Callable[[...], t.Coroutine]
-    enable_consumer: bool = True
     consume_timeout: float = 2.0
     consumer_pool_executor_cls: type[BasePoolExecutor] = PoolExecutor
     consumer_pool_maxsize: int = 200
