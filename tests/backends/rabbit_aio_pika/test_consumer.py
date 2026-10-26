@@ -1,9 +1,9 @@
 # coding: utf-8
 
-from queue_func.backends.rabbit_aio_pika.consumer import Consumer
-from queue_func.pool_executor.general import PoolExecutor
-from queue_func.serializer.orjson_ser import Serializer
-from queue_func.backends.rabbit_aio_pika.resource import Resource
+from messor.backends.rabbit_aio_pika.consumer import Consumer
+from messor.pool_executor.general import PoolExecutor
+from messor.serializer.orjson_ser import Serializer
+from messor.backends.rabbit_aio_pika.resource import Resource
 
 from tests.helpers import run_async
 from tests.rabbit_aio_pika_fakes import FakeIncoming, FakeWorld, patch_connect, wait_until

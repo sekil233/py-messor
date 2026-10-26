@@ -1,11 +1,11 @@
-# queue-func
+# messor
 
 [![Coverage Status](https://coveralls.io/repos/github/sekil9529/queue-func/badge.svg?branch=master)](https://coveralls.io/github/sekil9529/queue-func)
 [![tests](https://github.com/sekil9529/queue-func/actions/workflows/tests.yml/badge.svg)](https://github.com/sekil9529/queue-func/actions?query=workflow%3Atests)
-[![Latest Version](https://img.shields.io/pypi/v/queue-func.svg)](https://pypi.org/project/queue-func/)
-[![Wheel](https://img.shields.io/pypi/wheel/queue-func.svg)](https://pypi.org/project/queue-func/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/queue-func.svg)](https://pypi.org/project/queue-func/)
-[![License](https://img.shields.io/pypi/l/queue-func.svg)](https://pypi.org/project/queue-func/)
+[![Latest Version](https://img.shields.io/pypi/v/messor.svg)](https://pypi.org/project/messor/)
+[![Wheel](https://img.shields.io/pypi/wheel/messor.svg)](https://pypi.org/project/messor/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/messor.svg)](https://pypi.org/project/messor/)
+[![License](https://img.shields.io/pypi/l/messor.svg)](https://pypi.org/project/messor/)
 
 把一个 `async def` 收成队列任务：`push` 投递，消费者在同一个事件循环里执行。
 
@@ -37,18 +37,18 @@
 
 单个 consumer 的 stop 先标上停止，再等手头这次收消息结束；空闲时最多再等一个 `consume_timeout`。还没取走的 RabbitMQ 消息留在代理上。
 
-RabbitMQ 在消息交给消费池之后确认。处理函数出错不会把消息退回队列。`push` 会等发布确认，超时抛出 `queue_func.PublishTimeoutError`。
+RabbitMQ 在消息交给消费池之后确认。处理函数出错不会把消息退回队列。`push` 会等发布确认，超时抛出 `messor.PublishTimeoutError`。
 
 ## 安装
 
 ```shell
-pip install queue-func
+pip install messor
 ```
 
 使用 RabbitMQ：
 
 ```shell
-pip install "queue-func[rabbit]"
+pip install "messor[rabbit]"
 ```
 
 从仓库安装：
@@ -61,14 +61,14 @@ poetry install -E rabbit
 
 ## 用法
 
-从 `queue_func.factory` 引入 `App`、`Backend`。`name` 必填且唯一，用来在 `start(queues=[...])` 里点名。
+从 `messor.factory` 引入 `App`、`Backend`。`name` 必填且唯一，用来在 `start(queues=[...])` 里点名。
 
 ### 进程内队列
 
 ```python
 import asyncio
 
-from queue_func.factory import App, Backend
+from messor.factory import App, Backend
 
 app = App()
 
@@ -102,7 +102,7 @@ await process_order(1)
 ```python
 import asyncio
 
-from queue_func.factory import App, Backend
+from messor.factory import App, Backend
 
 app = App()
 
@@ -144,7 +144,7 @@ poetry run python examples/demo_queue.py
 ```python
 import asyncio
 
-from queue_func.factory import App, Backend
+from messor.factory import App, Backend
 
 app = App()
 
@@ -195,7 +195,7 @@ poetry run python examples/demo_partial_start.py
 ```python
 import asyncio
 
-from queue_func.factory import App, Backend
+from messor.factory import App, Backend
 
 app = App()
 
@@ -241,7 +241,7 @@ poetry run python examples/demo_rabbit_aio_pika.py
 | `exchange_name` / `routing_key` | 仅 RabbitMQ |
 | `queue_durable` | 仅 RabbitMQ，声明队列时是否持久化，默认否 |
 
-其余字段见 `queue_func.backends.queue.config.Config` 和 `queue_func.backends.rabbit_aio_pika.config.Config`。
+其余字段见 `messor.backends.queue.config.Config` 和 `messor.backends.rabbit_aio_pika.config.Config`。
 
 ## 一条任务里有什么
 

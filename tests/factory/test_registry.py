@@ -2,8 +2,8 @@
 
 import pytest
 
-from queue_func.factory import Backend
-from queue_func.factory import registry
+from messor.factory import Backend
+from messor.factory import registry
 
 
 def test_build_broker_lazy_imports_backend_module(monkeypatch):
@@ -24,7 +24,7 @@ def test_build_broker_lazy_imports_backend_module(monkeypatch):
         registry.build_broker(Backend.QUEUE, fn)
 
     # 空注册表下首次 build 一定发起后端模块的导入（懒加载）
-    assert imports == ["queue_func.backends.queue.build"]
+    assert imports == ["messor.backends.queue.build"]
 
 
 def test_build_broker_unknown_backend_raises(monkeypatch):

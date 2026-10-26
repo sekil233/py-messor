@@ -1,10 +1,10 @@
 import pytest
 from pydantic import ValidationError
 
-from queue_func.core.config import Config
-from queue_func.serializer.orjson_ser import Serializer as OrjsonSerializer
-from queue_func.serializer.raw import Serializer as RawSerializer
-from queue_func.pool_executor.general import PoolExecutor
+from messor.core.config import Config
+from messor.serializer.orjson_ser import Serializer as OrjsonSerializer
+from messor.serializer.raw import Serializer as RawSerializer
+from messor.pool_executor.general import PoolExecutor
 
 
 async def noop():

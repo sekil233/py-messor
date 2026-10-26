@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from queue_func.factory import App, Backend
+from messor.factory import App, Backend
 
 from tests.helpers import run_async
 from tests.rabbit_aio_pika_fakes import FakeWorld, patch_connect, wait_until

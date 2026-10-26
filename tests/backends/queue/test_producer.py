@@ -2,10 +2,10 @@
 
 import pytest
 
-from queue_func.errors import PublishTimeoutError
-from queue_func.backends.queue.producer import Producer
-from queue_func.serializer.raw import Serializer
-from queue_func.backends.queue.resource import Resource
+from messor.errors import PublishTimeoutError
+from messor.backends.queue.producer import Producer
+from messor.serializer.raw import Serializer
+from messor.backends.queue.resource import Resource
 
 from tests.helpers import run_async
 

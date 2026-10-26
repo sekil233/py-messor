@@ -20,7 +20,7 @@ hop 从 0 递增，每次投递 +1，hop >= MAX_HOP 停止投递，网络收敛�
 
 import asyncio
 
-from queue_func.factory import App, Backend
+from messor.factory import App, Backend
 
 MAX_HOP = 3
 

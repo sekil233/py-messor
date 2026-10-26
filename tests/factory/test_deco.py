@@ -4,9 +4,9 @@ import asyncio
 
 import pytest
 
-from queue_func.errors import PublishTimeoutError
-from queue_func.factory import App, Backend
-from queue_func.factory.deco import QueueFunc
+from messor.errors import PublishTimeoutError
+from messor.factory import App, Backend
+from messor.factory.deco import QueueFunc
 
 from tests.helpers import run_async
 

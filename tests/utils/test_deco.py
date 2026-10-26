@@ -2,7 +2,7 @@
 
 import pytest
 
-from queue_func.utils.deco import before
+from messor.utils.deco import before
 
 from tests.helpers import run_async
 

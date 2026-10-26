@@ -2,9 +2,9 @@
 
 import asyncio
 
-from queue_func.backends.queue.broker import Broker
-from queue_func.backends.queue.config import Config
-from queue_func.serializer.raw import Serializer
+from messor.backends.queue.broker import Broker
+from messor.backends.queue.config import Config
+from messor.serializer.raw import Serializer
 
 from tests.helpers import run_async
 

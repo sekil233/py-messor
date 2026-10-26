@@ -2,10 +2,10 @@
 
 import asyncio
 
-from queue_func.backends.queue.consumer import Consumer
-from queue_func.pool_executor.general import PoolExecutor
-from queue_func.serializer.raw import Serializer
-from queue_func.backends.queue.resource import Resource
+from messor.backends.queue.consumer import Consumer
+from messor.pool_executor.general import PoolExecutor
+from messor.serializer.raw import Serializer
+from messor.backends.queue.resource import Resource
 
 from tests.helpers import run_async
 

@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from queue_func.factory import App, Backend
-from queue_func.factory.deco import QueueFunc
+from messor.factory import App, Backend
+from messor.factory.deco import QueueFunc
 
 from tests.helpers import run_async
 from tests.rabbit_aio_pika_fakes import FakeWorld, patch_connect, wait_until
@@ -25,7 +25,7 @@ async def _wait_until(predicate, *, timeout: float = 2.0, interval: float = 0.02
 @run_async
 async def test_app_start_memory_consumers_reverse_order(monkeypatch):
 
-    from queue_func.backends.queue.broker import Broker
+    from messor.backends.queue.broker import Broker
 
     app = App()
     order: list[str] = []
@@ -56,7 +56,7 @@ async def test_app_start_memory_consumers_reverse_order(monkeypatch):
 @run_async
 async def test_app_start_rabbit_consumers_reverse_order(monkeypatch):
 
-    from queue_func.backends.rabbit_aio_pika.broker import Broker
+    from messor.backends.rabbit_aio_pika.broker import Broker
 
     app = App()
     order: list[str] = []

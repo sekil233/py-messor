@@ -1,6 +1,6 @@
-from queue_func.serializer.base import Message
-from queue_func.core.config import Config
-from queue_func.core.broker import BaseBroker
+from messor.serializer.base import Message
+from messor.core.config import Config
+from messor.core.broker import BaseBroker
 
 from tests.helpers import run_async
 

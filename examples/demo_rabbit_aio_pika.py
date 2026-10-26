@@ -10,7 +10,7 @@
 
 import asyncio
 
-from queue_func.factory import App, Backend
+from messor.factory import App, Backend
 
 app = App()
 

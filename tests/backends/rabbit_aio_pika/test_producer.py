@@ -4,11 +4,11 @@ import asyncio
 
 import pytest
 
-from queue_func.backends.rabbit_aio_pika.config import DeliveryMode, ExchangeName
-from queue_func.errors import PublishTimeoutError
-from queue_func.backends.rabbit_aio_pika.producer import Producer
-from queue_func.serializer.orjson_ser import Serializer
-from queue_func.backends.rabbit_aio_pika.resource import Resource
+from messor.backends.rabbit_aio_pika.config import DeliveryMode, ExchangeName
+from messor.errors import PublishTimeoutError
+from messor.backends.rabbit_aio_pika.producer import Producer
+from messor.serializer.orjson_ser import Serializer
+from messor.backends.rabbit_aio_pika.resource import Resource
 
 from tests.helpers import run_async
 from tests.rabbit_aio_pika_fakes import FakeWorld, patch_connect, wait_until

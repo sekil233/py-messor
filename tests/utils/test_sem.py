@@ -2,7 +2,7 @@
 
 import asyncio
 
-from queue_func.utils.sem import JoinableSemaphore
+from messor.utils.sem import JoinableSemaphore
 
 from tests.helpers import run_async
 

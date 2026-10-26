@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from queue_func.serializer.raw import Serializer
-from queue_func.backends.queue.resource import Resource
+from messor.serializer.raw import Serializer
+from messor.backends.queue.resource import Resource
 
 from tests.helpers import run_async
 

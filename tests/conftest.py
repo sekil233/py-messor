@@ -2,7 +2,7 @@
 
 import pytest
 
-from queue_func.core._inflight import _INFLIGHT
+from messor.core._inflight import _INFLIGHT
 
 
 @pytest.fixture(autouse=True)

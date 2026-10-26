@@ -2,10 +2,10 @@ import asyncio
 
 import pytest
 
-from queue_func.serializer.base import Message
-from queue_func.serializer.raw import Serializer
-from queue_func.core.resource import BaseResource
-from queue_func.core.producer import BaseProducer
+from messor.serializer.base import Message
+from messor.serializer.raw import Serializer
+from messor.core.resource import BaseResource
+from messor.core.producer import BaseProducer
 
 from tests.helpers import run_async
 
