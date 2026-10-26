@@ -20,12 +20,14 @@ hop 从 0 递增，每次投递 +1，hop >= MAX_HOP 停止投递，网络收敛�
 
 import asyncio
 
-from queue_func.factory import Backend, QueueFuncRuntime, queue
+from queue_func.factory import App, Backend
 
 MAX_HOP = 3
 
+app = App()
 
-@queue(Backend.QUEUE, consume_timeout=0.5)
+
+@app.queue(Backend.QUEUE, name="task_a", consume_timeout=0.5)
 async def task_a(job: str, hop: int) -> None:
 
     print("a", job, hop)
@@ -36,8 +38,9 @@ async def task_a(job: str, hop: int) -> None:
     await task_a.push(args=(f"a:{job}", hop + 1))
 
 
-@queue(
+@app.queue(
     Backend.RABBIT_AIO_PIKA,
+    name="task_r",
     url="amqp://guest:guest@127.0.0.1:5672/",
     queue_name="demo_network_r",
     enable_declare_queue=True,
@@ -53,7 +56,7 @@ async def task_r(job: str, hop: int) -> None:
     await task_b.push(args=(f"b:{job}", hop + 1))
 
 
-@queue(Backend.QUEUE, consume_timeout=0.5)
+@app.queue(Backend.QUEUE, name="task_b", consume_timeout=0.5)
 async def task_b(job: str, hop: int) -> None:
 
     print("b", job, hop)
@@ -64,7 +67,7 @@ async def task_b(job: str, hop: int) -> None:
     await task_c.push(args=(f"c:{job}", hop + 1))
 
 
-@queue(Backend.QUEUE, consume_timeout=0.5)
+@app.queue(Backend.QUEUE, name="task_c", consume_timeout=0.5)
 async def task_c(job: str, hop: int) -> None:
 
     print("c", job, hop)
@@ -76,11 +79,10 @@ async def task_c(job: str, hop: int) -> None:
 
 async def main() -> None:
 
-    runtime = QueueFuncRuntime([task_a, task_b, task_c, task_r])
-    await runtime.start()
+    await app.start()
     await task_a.push(args=("root", 0))
     await asyncio.sleep(0.5)
-    await runtime.stop()
+    await app.stop()
 
 
 if __name__ == "__main__":

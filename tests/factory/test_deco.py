@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 from queue_func.errors import PublishTimeoutError
-from queue_func.factory import Backend, queue
+from queue_func.factory import App, Backend
 from queue_func.factory.deco import QueueFunc
 
 from tests.helpers import run_async
@@ -23,12 +23,14 @@ async def _wait_until(predicate, *, timeout: float = 2.0, interval: float = 0.02
 
 
 @run_async
-async def test_deco_push_and_consume_end_to_end():
+async def test_app_queue_push_and_consume_end_to_end():
 
     received: list[tuple[int, int]] = []
+    app = App()
 
-    @queue(
+    @app.queue(
         Backend.QUEUE,
+        name="add",
         consume_timeout=0.05,
         consumer_pool_maxsize=2,
         maxsize=10,
@@ -38,37 +40,38 @@ async def test_deco_push_and_consume_end_to_end():
 
     assert isinstance(add, QueueFunc)
 
-    await add.broker.start_consumer()
+    await app.start()
     await add.push(args=(3, 5))
     await _wait_until(lambda: received == [(3, 5)])
 
-    await add.broker.stop_consumer()
-    await add.broker.join_consumer()
+    await app.stop()
 
     assert received == [(3, 5)]
 
 
 @run_async
-async def test_deco_default_queue_backend():
+async def test_app_queue_default_backend():
 
     hits: list[int] = []
+    app = App()
 
-    @queue(Backend.QUEUE, consume_timeout=0.05, maxsize=5)
+    @app.queue(Backend.QUEUE, name="work", consume_timeout=0.05, maxsize=5)
     async def work(n: int):
         hits.append(n)
 
-    await work.broker.start_consumer()
+    await app.start()
     await work.push(args=(9,))
     await _wait_until(lambda: hits == [9])
 
-    await work.broker.stop_consumer()
-    await work.broker.join_consumer()
+    await app.stop()
 
 
 @run_async
-async def test_deco_wrapped_function_still_callable():
+async def test_app_queue_wrapped_function_still_callable():
 
-    @queue(Backend.QUEUE)
+    app = App()
+
+    @app.queue(Backend.QUEUE, name="double")
     async def double(x: int) -> int:
         return x * 2
 
@@ -76,28 +79,30 @@ async def test_deco_wrapped_function_still_callable():
 
 
 @run_async
-async def test_deco_push_accepts_kwargs():
+async def test_app_queue_push_accepts_kwargs():
 
     received: list[tuple] = []
+    app = App()
 
-    @queue(Backend.QUEUE, consume_timeout=0.05, maxsize=5)
+    @app.queue(Backend.QUEUE, name="fn", consume_timeout=0.05, maxsize=5)
     async def fn(a, b, *, c):
         received.append((a, b, c))
 
-    await fn.broker.start_consumer()
+    await app.start()
     await fn.push(args=(1, 2), kwargs={"c": 3})
     await _wait_until(lambda: len(received) == 1)
 
-    await fn.broker.stop_consumer()
-    await fn.broker.join_consumer()
+    await app.stop()
 
     assert received == [(1, 2, 3)]
 
 
 @run_async
-async def test_deco_push_timeout_overrides_config():
+async def test_app_queue_push_timeout_overrides_config():
 
-    @queue(Backend.QUEUE, maxsize=1, publish_timeout=None)
+    app = App()
+
+    @app.queue(Backend.QUEUE, name="work", maxsize=1, publish_timeout=None)
     async def work(n: int):
         return n
 
@@ -105,3 +110,27 @@ async def test_deco_push_timeout_overrides_config():
 
     with pytest.raises(PublishTimeoutError):
         await work.push(args=(2,), timeout=0.05)
+
+
+def test_app_queue_name_required():
+
+    app = App()
+
+    with pytest.raises(TypeError):
+        @app.queue(Backend.QUEUE)
+        async def work():
+            return None
+
+
+def test_app_queue_name_unique():
+
+    app = App()
+
+    @app.queue(Backend.QUEUE, name="work")
+    async def work():
+        return None
+
+    with pytest.raises(ValueError):
+        @app.queue(Backend.QUEUE, name="work")
+        async def other():
+            return None

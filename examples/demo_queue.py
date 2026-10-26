@@ -7,24 +7,26 @@
 
 import asyncio
 
-from queue_func.factory import Backend, QueueFuncRuntime, queue
+from queue_func.factory import App, Backend
+
+app = App()
 
 
-@queue(Backend.QUEUE, consume_timeout=0.5)
+@app.queue(Backend.QUEUE, name="task_a", consume_timeout=0.5)
 async def task_a(job: str) -> None:
 
     print("a", job)
     await task_b.push(args=(job,))
 
 
-@queue(Backend.QUEUE, consume_timeout=0.5)
+@app.queue(Backend.QUEUE, name="task_b", consume_timeout=0.5)
 async def task_b(job: str) -> None:
 
     print("b", job)
     await task_c.push(args=(job,))
 
 
-@queue(Backend.QUEUE, consume_timeout=0.5)
+@app.queue(Backend.QUEUE, name="task_c", consume_timeout=0.5)
 async def task_c(job: str) -> None:
 
     print("c", job)
@@ -32,10 +34,9 @@ async def task_c(job: str) -> None:
 
 async def main() -> None:
 
-    runtime = QueueFuncRuntime([task_a, task_b, task_c])
-    await runtime.start()
+    await app.start()
     await task_a.push(args=("订单-001",))
-    await runtime.stop()
+    await app.stop()
 
 
 if __name__ == "__main__":
