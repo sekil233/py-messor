@@ -1,7 +1,7 @@
 # messor
 
-[![Coverage Status](https://coveralls.io/repos/github/sekil9529/queue-func/badge.svg?branch=master)](https://coveralls.io/github/sekil9529/queue-func)
-[![tests](https://github.com/sekil9529/queue-func/actions/workflows/tests.yml/badge.svg)](https://github.com/sekil9529/queue-func/actions?query=workflow%3Atests)
+[![Coverage Status](https://coveralls.io/repos/github/sekil9529/py-messor/badge.svg?branch=master)](https://coveralls.io/github/sekil9529/py-messor)
+[![tests](https://github.com/sekil9529/py-messor/actions/workflows/tests.yml/badge.svg)](https://github.com/sekil9529/py-messor/actions?query=workflow%3Atests)
 [![Latest Version](https://img.shields.io/pypi/v/py-messor.svg)](https://pypi.org/project/py-messor/)
 [![Wheel](https://img.shields.io/pypi/wheel/py-messor.svg)](https://pypi.org/project/py-messor/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/py-messor.svg)](https://pypi.org/project/py-messor/)
@@ -54,8 +54,8 @@ pip install "py-messor[rabbit]"
 从仓库安装：
 
 ```shell
-git clone https://github.com/sekil9529/queue-func.git
-cd queue-func
+git clone https://github.com/sekil9529/py-messor.git
+cd py-messor
 poetry install -E rabbit
 ```
 
