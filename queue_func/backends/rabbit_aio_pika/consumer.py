@@ -48,13 +48,10 @@ class Consumer(_BaseConsumer[bytes, Resource]):
         # self._channel: "AbstractChannel | None" = None
         self._queue: "AbstractQueue | None" = None
 
-    async def _on_startup(self) -> None:
-
-        await self._ensure_queue()
-
     async def _consume_once(self) -> None:
 
-        async with self._queue.iterator(timeout=self._consume_timeout) as queue_iter:
+        queue = await self._ensure_queue()
+        async with queue.iterator(timeout=self._consume_timeout) as queue_iter:
             message: "AbstractIncomingMessage"
             try:
                 async for message in queue_iter:
@@ -64,11 +61,10 @@ class Consumer(_BaseConsumer[bytes, Resource]):
             except asyncio.TimeoutError:
                 pass
 
-
-    async def _ensure_queue(self) -> None:
+    async def _ensure_queue(self) -> "AbstractQueue":
 
         if self._queue is not None:
-            return None
+            return self._queue
 
         self._on_cleanup.register(self._resource.try_close_connection)
         channel = await self._resource.get_channel()
@@ -78,4 +74,6 @@ class Consumer(_BaseConsumer[bytes, Resource]):
             prefetch_size=self._prefetch_size,
             global_=self._global_qos,
         )
-        self._queue = await self._resource.declare_queue(channel)
+        queue = await self._resource.declare_queue(channel)
+        self._queue = queue
+        return queue

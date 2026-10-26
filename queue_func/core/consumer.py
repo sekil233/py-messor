@@ -5,11 +5,10 @@ import asyncio
 import logging
 import typing as t
 
-from queue_func import pool_executor
 from queue_func.serializer.base import Message
 from queue_func.core.resource import Resource
 from queue_func.pool_executor.base import BasePoolExecutor
-from queue_func.utils.hook import OnceHooks, HookOrder
+from queue_func.utils.hook import Hooks, HookOrder
 from queue_func.utils.lazy import LazyObject
 
 
@@ -43,8 +42,8 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         self._pool_executor = LazyObject[BasePoolExecutor](pool_executor_cls, pool_maxsize)
         self._consume_timeout = consume_timeout
         self._stopped = False
-        # 资源回收
-        self._on_cleanup = OnceHooks(order=HookOrder.LIFO)
+        # 资源释放
+        self._on_cleanup = Hooks(order=HookOrder.LIFO)
         self._startup = asyncio.Event()
         self._logger = logging.getLogger(__name__)
         self._worker: asyncio.Task | None = None
@@ -61,20 +60,21 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         self._worker = asyncio.create_task(self._consume_loop())
         # 等待启动完成
         await self._startup.wait()
+        return None
 
     async def _on_startup(self) -> None:
-        """启动时执行"""
+        """启动执行"""
 
         pass
 
-    async def _wait_worker(self) -> None:
+    async def _on_shutdown(self) -> None:
+        """结束等待：self._drain之后触发"""
 
-        if self._worker is not None:
-            await self._worker
+        await self._pool_executor.obj.join()
 
     async def _consume_loop(self) -> None:
 
-        # 启动时执行
+        # 启动执行
         await self._on_startup()
         # 启动完成
         self._startup.set()
@@ -84,7 +84,12 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
             except Exception as e:
                 self._logger.exception(e)
                 await asyncio.sleep(0.05)
+        # 剩余处理
         await self._drain()
+        # 结束等待
+        await self._on_shutdown()
+        # 资源回收
+        await self._on_cleanup.run(reset=True)
 
     @abc.abstractmethod
     async def _consume_once(self) -> None:
@@ -107,10 +112,7 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         self._stopped = True
 
     async def join(self) -> None:
+        
+        if self._worker is not None:
+            await self._worker
 
-        await self._wait_worker()
-
-        if self._pool_executor.is_created():
-            await self._pool_executor.obj.join()
-
-        await self._on_cleanup.run()

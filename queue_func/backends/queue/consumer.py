@@ -12,11 +12,7 @@ from queue_func.core.consumer import BaseConsumer as _BaseConsumer
 class Consumer(_BaseConsumer[Message, Resource]):
 
 
-    async def _on_startup(self) -> None:
-
-        self._on_cleanup.register(self._resource.queue.join)
-
-    async def _consume_once(self) ->  None:
+    async def _consume_once(self) -> Message | None:
 
         queue = self._resource.queue
         try:
@@ -38,3 +34,8 @@ class Consumer(_BaseConsumer[Message, Resource]):
             message: Message = queue.get_nowait()
             await self._dispatch(message)
             queue.task_done()
+
+    async def _on_shutdown(self) -> None:
+
+        await self._resource.queue.join()
+        await self._pool_executor.obj.join()
