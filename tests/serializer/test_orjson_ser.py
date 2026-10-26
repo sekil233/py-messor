@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from queue_func.serializer.orjson_ser import Serializer
+from messor.serializer.orjson_ser import Serializer
 
 
 def test_orjson_serializer_roundtrip():

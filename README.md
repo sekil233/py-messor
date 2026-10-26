@@ -1,11 +1,11 @@
-# queue-func
+# messor
 
 [![Coverage Status](https://coveralls.io/repos/github/sekil9529/queue-func/badge.svg?branch=master)](https://coveralls.io/github/sekil9529/queue-func)
 [![tests](https://github.com/sekil9529/queue-func/actions/workflows/tests.yml/badge.svg)](https://github.com/sekil9529/queue-func/actions?query=workflow%3Atests)
-[![Latest Version](https://img.shields.io/pypi/v/queue-func.svg)](https://pypi.org/project/queue-func/)
-[![Wheel](https://img.shields.io/pypi/wheel/queue-func.svg)](https://pypi.org/project/queue-func/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/queue-func.svg)](https://pypi.org/project/queue-func/)
-[![License](https://img.shields.io/pypi/l/queue-func.svg)](https://pypi.org/project/queue-func/)
+[![Latest Version](https://img.shields.io/pypi/v/messor.svg)](https://pypi.org/project/messor/)
+[![Wheel](https://img.shields.io/pypi/wheel/messor.svg)](https://pypi.org/project/messor/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/messor.svg)](https://pypi.org/project/messor/)
+[![License](https://img.shields.io/pypi/l/messor.svg)](https://pypi.org/project/messor/)
 
 把一个 `async def` 收成队列任务：`push` 投递，消费者在同一个事件循环里执行。
 
@@ -17,30 +17,38 @@
 
 ## 特点
 
-- 进程内 `asyncio.Queue` 和 RabbitMQ 两种后端，装饰器都是 `@queue`。
+- 进程内 `asyncio.Queue` 和 RabbitMQ 两种后端，统一用 `App` 的 `@app.queue` 装饰。
 - 每个任务有自己的队列、序列化和消费并发上限。
-- `QueueFuncRuntime` 把多段任务按下游先启动、上游后停止的顺序一起管。
+- `App.start()` 逆序启动消费者（下游先就绪），`App.stop()` 按关闭编排回收。
+- `start(queues=[...])` 可以只启动部分消费者；绑定的内存队列必须全部包含，否则报错。
 - `start` 会等到消费者开始收消息再返回。
 - 装饰之后仍可以直接 `await` 调用，不经过队列。
 
 ## 启动和停止
 
-`broker.start_consumer()` 创建消费任务，并等到它开始收消息。内存队列是已经堵在 `get()` 上；RabbitMQ 是队列已经订阅上。
+`app.start()` 启动消费者：内存队列 consumer 先按逆序启动，其余队列随后也按逆序启动（下游先就绪）。`start` 会等到消费者开始收消息再返回——内存队列已经堵在 `get()` 上，RabbitMQ 是队列已经订阅上。
 
-`stop` 先标上停止，再等手头这次收消息结束。空闲时最多再等一个 `consume_timeout`。还没取走的 RabbitMQ 消息留在代理上。
+`app.stop()` 按编排关闭：
 
-RabbitMQ 在消息交给消费池之后确认。处理函数出错不会把消息退回队列。`push` 会等发布确认，超时抛出 `queue_func.PublishTimeoutError`。
+1. 非内存队列 consumer 逐个 stop/join——先断掉往内存队列投递的外部源；
+2. `wait_drained` 等全部在途消息处理完成（此时内存 consumer 仍在消费）；
+3. 内存队列 consumer 逐个 stop/join；
+4. 生产者全部 stop/join；绑定但未启动的 producer 也按绑定顺序一并收尾。
+
+单个 consumer 的 stop 先标上停止，再等手头这次收消息结束；空闲时最多再等一个 `consume_timeout`。还没取走的 RabbitMQ 消息留在代理上。
+
+RabbitMQ 在消息交给消费池之后确认。处理函数出错不会把消息退回队列。`push` 会等发布确认，超时抛出 `messor.PublishTimeoutError`。
 
 ## 安装
 
 ```shell
-pip install queue-func
+pip install messor
 ```
 
 使用 RabbitMQ：
 
 ```shell
-pip install "queue-func[rabbit]"
+pip install "messor[rabbit]"
 ```
 
 从仓库安装：
@@ -53,26 +61,27 @@ poetry install -E rabbit
 
 ## 用法
 
-从 `queue_func.factory` 引入 `queue`、`Backend`、`QueueFuncRuntime`。
+从 `messor.factory` 引入 `App`、`Backend`。`name` 必填且唯一，用来在 `start(queues=[...])` 里点名。
 
 ### 进程内队列
 
 ```python
 import asyncio
 
-from queue_func.factory import Backend, queue
+from messor.factory import App, Backend
+
+app = App()
 
 
-@queue(Backend.QUEUE, consume_timeout=0.5, maxsize=1000)
+@app.queue(Backend.QUEUE, name="process_order", consume_timeout=0.5, maxsize=1000)
 async def process_order(order_id: int) -> None:
     print(order_id)
 
 
 async def main() -> None:
-    await process_order.broker.start_consumer()
+    await app.start()
     await process_order.push(args=(42,))
-    await process_order.broker.stop_consumer()
-    await process_order.broker.join_consumer()
+    await app.stop()
 
 
 asyncio.run(main())
@@ -88,29 +97,30 @@ await process_order(1)
 
 ### 多段流水线
 
-`QueueFuncRuntime.start()` 按列表反序启动，下游先就绪。`stop()` 先逐个停消费者，再停全部生产者。
+`App.start()` 逆序启动消费者：内存队列 consumer 先按逆序启动，其余队列随后也按逆序启动，下游先就绪。`stop()` 复用关闭编排：非内存 consumer 先停 -> wait_drained -> 内存 consumer -> producer。
 
 ```python
 import asyncio
 
-from queue_func.factory import Backend, QueueFuncRuntime, queue
+from messor.factory import App, Backend
+
+app = App()
 
 
-@queue(Backend.QUEUE, consumer_pool_maxsize=4)
+@app.queue(Backend.QUEUE, name="task_b", consumer_pool_maxsize=4)
 async def task_b(job: str) -> None:
     print(job)
 
 
-@queue(Backend.QUEUE, consumer_pool_maxsize=2)
+@app.queue(Backend.QUEUE, name="task_a", consumer_pool_maxsize=2)
 async def task_a(job: str) -> None:
     await task_b.push(args=(job,))
 
 
 async def main() -> None:
-    runtime = QueueFuncRuntime([task_a, task_b])
-    await runtime.start()
+    await app.start()
     await task_a.push(args=("job-1",))
-    await runtime.stop()
+    await app.stop()
 
 
 asyncio.run(main())
@@ -122,20 +132,77 @@ asyncio.run(main())
 poetry run python examples/demo_queue.py
 ```
 
-### RabbitMQ
+### 只启动部分队列
 
-`url` 和 `queue_name` 必填。`enable_declare_queue=True` 时，队列不存在会创建。默认交换机名是 `""`，路由键默认用队列名。已经存在的队列再声明时，持久化等参数必须和代理上的一致。
+`app.start(queues=[name, ...])` 只启动点名的那几个消费者，其余队列的 consumer 不启动。不传 `queues` 则全部启动。
 
-只投递、不消费的进程把 `enable_consumer` 设为 `False`。
+- 绑定的内存队列必须全部包含在 `queues` 里，否则报错（内存队列没有独立持久化，漏启会导致投递无处消费）。
+- 未启动队列的 producer 依然可用，`app.stop()` 收尾时会按绑定顺序把它一并 stop/join。
+
+示例（内存 `task_a`/`task_b` 必须全选，rabbit 只启动 `task_r1`）：
 
 ```python
 import asyncio
 
-from queue_func.factory import Backend, queue
+from messor.factory import App, Backend
+
+app = App()
 
 
-@queue(
+@app.queue(Backend.QUEUE, name="task_a", consume_timeout=0.5)
+async def task_a(job: str) -> None:
+    print("a", job)
+    await task_b.push(args=(job,))
+
+
+@app.queue(Backend.QUEUE, name="task_b", consume_timeout=0.5)
+async def task_b(job: str) -> None:
+    print("b", job)
+
+
+@app.queue(
     Backend.RABBIT_AIO_PIKA,
+    name="task_r1",
+    url="amqp://guest:guest@127.0.0.1:5672/",
+    queue_name="demo_partial_r1",
+    enable_declare_queue=True,
+    consume_timeout=0.5,
+)
+async def task_r1(job: str) -> None:
+    print("r1", job)
+
+
+async def main() -> None:
+    await app.start(queues=["task_a", "task_b", "task_r1"])
+    await task_a.push(args=("订单-001",))
+    await asyncio.sleep(1)
+    await app.stop()
+
+
+asyncio.run(main())
+```
+
+完整示例：
+
+```shell
+poetry run python examples/demo_partial_start.py
+```
+
+### RabbitMQ
+
+`url` 和 `queue_name` 必填。`enable_declare_queue=True` 时，队列不存在会创建。默认交换机名是 `""`，路由键默认用队列名。已经存在的队列再声明时，持久化等参数必须和代理上的一致。
+
+```python
+import asyncio
+
+from messor.factory import App, Backend
+
+app = App()
+
+
+@app.queue(
+    Backend.RABBIT_AIO_PIKA,
+    name="process_order",
     url="amqp://guest:guest@127.0.0.1/",
     queue_name="process_order",
     enable_declare_queue=True,
@@ -146,12 +213,9 @@ async def process_order(order_id: int) -> None:
 
 
 async def main() -> None:
-    await process_order.broker.start_consumer()
+    await app.start()
     await process_order.push(args=(42,))
-    await process_order.broker.stop_consumer()
-    await process_order.broker.join_consumer()
-    await process_order.broker.stop_producer()
-    await process_order.broker.join_producer()
+    await app.stop()
 
 
 asyncio.run(main())
@@ -177,11 +241,11 @@ poetry run python examples/demo_rabbit_aio_pika.py
 | `exchange_name` / `routing_key` | 仅 RabbitMQ |
 | `queue_durable` | 仅 RabbitMQ，声明队列时是否持久化，默认否 |
 
-其余字段见 `queue_func.backends.queue.config.Config` 和 `queue_func.backends.rabbit_aio_pika.config.Config`。
+其余字段见 `messor.backends.queue.config.Config` 和 `messor.backends.rabbit_aio_pika.config.Config`。
 
 ## 一条任务里有什么
 
-`@queue` 装饰的协程就是一条队列。`push` 投到它自己这条队列上。
+`@app.queue` 装饰的协程就是一条队列。`push` 投到它自己这条队列上。
 
 - **Broker** 组装生产者、消费者和双方共用的资源，并提供启停与投递。
 - **Producer** 序列化后把数据写入队列。

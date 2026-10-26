@@ -2,7 +2,7 @@
 
 import pytest
 
-from queue_func.pool_executor.base import BasePoolExecutor
+from messor.pool_executor.base import BasePoolExecutor
 
 
 def test_base_pool_executor_cannot_be_instantiated():

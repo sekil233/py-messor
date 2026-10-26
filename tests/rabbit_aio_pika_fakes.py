@@ -146,6 +146,7 @@ class FakeWorld:
     async def connect_robust(self, url: str) -> FakeConnection:
 
         self.urls.append(url)
+        self.connection.closed = False
         return self.connection
 
 
@@ -153,7 +154,7 @@ class FakeWorld:
 def patch_connect(world: FakeWorld):
 
     with patch(
-            "queue_func.backends.rabbit_aio_pika.resource.aio_pika.connect_robust",
+            "messor.backends.rabbit_aio_pika.resource.aio_pika.connect_robust",
             world.connect_robust,
     ):
         yield world
