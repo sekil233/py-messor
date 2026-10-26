@@ -3,14 +3,13 @@
 import abc
 import asyncio
 import logging
-import contextlib
 import typing as t
-from functools import wraps
 
 from queue_func.serializer.base import Message
 from queue_func.core.resource import Resource
 from queue_func.pool_executor.base import BasePoolExecutor
-from queue_func.utils.hook import OnceHooks
+from queue_func.utils.hook import Hooks, HookOrder
+from queue_func.utils.lazy import LazyObject
 
 
 class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
@@ -18,104 +17,105 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
     __slots__ = (
         "_resource",
         "_coro",
-        "_enable_consumer",
         "_pool_executor",
         "_consume_timeout",
-        "_startup",
-        "_shutdown",
+        "_on_coro_done",
+        "_on_cleanup",
         "_stopped",
-        "_running",
+        "_startup",
         "_logger",
+        "_task",
     )
 
     def __init__(
             self,
             resource: Resource,
             coro: t.Callable[..., t.Coroutine],
-            enable_consumer: bool,
             consume_timeout: float,
             pool_executor_cls: type[BasePoolExecutor],
             pool_maxsize: int):
 
         self._resource = resource
         self._coro = coro
-        self._enable_consumer = enable_consumer
-        self._pool_executor = self._init_pool_executor(pool_executor_cls, pool_maxsize)
+        self._pool_executor = LazyObject[BasePoolExecutor](pool_executor_cls, pool_maxsize)
         self._consume_timeout = consume_timeout
         self._stopped = False
-        self._running = asyncio.Event()
-        self._startup = OnceHooks()
-        self._shutdown = OnceHooks()
+        self._on_coro_done = Hooks(order=HookOrder.LIFO)
+        # 资源释放
+        self._on_cleanup = Hooks(order=HookOrder.LIFO)
+        self._startup = asyncio.Event()
         self._logger = logging.getLogger(__name__)
-
-    def _init_pool_executor(
-            self,
-            consumer_pool_executor_cls: type[BasePoolExecutor],
-            consumer_pool_maxsize: int) -> BasePoolExecutor | None:
-
-        if self._enable_consumer:
-            return consumer_pool_executor_cls(consumer_pool_maxsize)
-        return None
-
-    def _run_until_stopped(
-            self,
-            fn: t.Callable[..., t.Awaitable],
-            delay: float = 0.05) -> t.Callable[..., t.Coroutine]:
-
-        @wraps(fn)
-        async def wrapped(*args, **kwargs) -> None:
-
-            while not self._stopped:
-                try:
-                    await fn(*args, **kwargs)
-                except Exception as e:
-                    self._logger.exception(e)
-                await asyncio.sleep(delay)
-
-        return wrapped
-
-    async def _dispatch(self, coro_args: tuple[t.Any], coro_kwargs: dict[str, t.Any], **_kwargs) -> None:
-
-        assert self._pool_executor is not None, "consumer pool not initialized"
-        await self._pool_executor.submit(self._coro, coro_args, coro_kwargs)
+        self._task: asyncio.Task | None = None
 
     async def consume(self) -> None:
 
-        if self._enable_consumer:
-            self._stopped = False
-            self._startup.register(self._run_until_stopped(self._consume))
-            self._register_shutdown()
-            await self._startup.start()
-            await self._running.wait()
+        self._stopped = False
+        # 未启动
+        self._startup.clear()
+        # 开启消费
+        self._task = asyncio.create_task(self._consume_loop())
+        # 等待启动完成
+        await self._startup.wait()
+        return None
 
-    def _mark_running(self) -> None:
-        """消费者已经开始收消息。``consume`` 等到这里才返回。"""
+    async def _on_startup(self) -> None:
+        """启动执行"""
 
-        self._running.set()
+        pass
+
+    async def _on_shutdown(self) -> None:
+        """结束等待：self._drain之后触发"""
+
+        await self._pool_executor.obj.join()
+
+    async def _consume_loop(self) -> None:
+
+        # 启动执行
+        await self._on_startup()
+        # 启动完成
+        self._startup.set()
+        while not self._stopped:
+            try:
+                await self._consume_once()
+            except Exception as e:
+                self._logger.exception(e)
+                await asyncio.sleep(0.05)
+        # 剩余处理
+        await self._drain()
+        # 结束等待
+        await self._on_shutdown()
+        # 资源回收
+        await self._on_cleanup.run(reset=True)
 
     @abc.abstractmethod
-    async def _consume(self) -> None:  # pragma: no cover
+    async def _consume_once(self) -> None:
+
+        pass
+
+    async def _dispatch(self, message: Message) -> None:
+        """消息处理"""
+
+        coro_args, coro_kwargs = self._resource.serializer.unpack(message)
+        await self._pool_executor.obj.submit(self._run_coro, coro_args, coro_kwargs)
+
+    async def _run_coro(self, *coro_args, **coro_kwargs) -> None:
+        """执行用户协程，完成后触发 _on_coro_done 钩子（如 ack）"""
+
+        try:
+            await self._coro(*coro_args, **coro_kwargs) 
+        finally:
+            await self._on_coro_done.run(reset=False)
+
+    async def _drain(self) -> None:
+        """剩余处理"""
 
         pass
 
     async def stop(self) -> None:
 
-        await self._shutdown.start(prepare=self._mark_stopped)
-
-    def _mark_stopped(self) -> None:
-
         self._stopped = True
 
     async def join(self) -> None:
-
-        await self._shutdown.wait()
-
-    async def _join_pool_executor(self):
-
-        if self._pool_executor is not None:
-            await self._pool_executor.join()
-
-    def _register_shutdown(self) -> None:
-
-        self._shutdown.register(self._startup.wait)
-        self._shutdown.register(self._join_pool_executor)
+        
+        if self._task is not None:
+            await self._task

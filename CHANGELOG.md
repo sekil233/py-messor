@@ -1,3 +1,16 @@
+0.2.4
+-----
+
+* feat: 新增 `App` 统一管理队列，`@app.queue(name=...)` 注册，`name` 必填且唯一；`start(queues=[...])` 可选择性启动消费者，绑定的内存队列必须全部包含，否则报错
+* feat: 消费者按逆序启动（下游先就绪），`stop` 按关闭编排回收：非内存 consumer 先停 -> `wait_drained` -> 内存 consumer -> producer
+* feat: 新增进程级在途计数 `_Inflight`，`wait_drained` 等全部在途消息处理完成
+* refactor: producer 改为异步优雅关闭（`stop` 发起、`join` 等待），移除 `enable_consumer`
+* refactor: 消费循环、启动等待与关闭顺序收进 `core` 基类，后端只实现 `_on_startup`、`_consume_once`、`_drain`
+* refactor: consumer 收尾内联进 worker，`Hooks` 支持重复执行
+* refactor: 后端注册表懒加载（用到才导入），删除 `factory/builders`
+* test: 测试目录对齐源码布局，补充 core 基类与 App 的单元测试
+* docs: README 与示例更新，新增混合队列网络与选择性启动示例
+
 0.2.3
 -----
 

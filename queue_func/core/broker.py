@@ -27,6 +27,9 @@ class BaseBroker(t.Generic[ConfigType, Message], metaclass=abc.ABCMeta):
         "_consumer",
     )
 
+    # 是否内存队列：内存队列需 wait_drained 后关闭，非内存队列可直接关
+    IS_MEMORY = False
+
     _producer: "BaseProducer"
     _consumer: "BaseConsumer"
 

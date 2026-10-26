@@ -53,8 +53,8 @@ async def test_producer_stop_rejects_later_publish_and_join_returns():
     producer = Producer(resource, publish_timeout=None)
 
     await producer.stop()
+    # stop() 是异步发起，join() 等待真正停止完成后才拒绝新 publish
+    await producer.join()
 
     with pytest.raises(RuntimeError):
         await producer.publish((), {})
-
-    await producer.join()

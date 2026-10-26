@@ -2,6 +2,7 @@
 
 import asyncio
 import typing as t
+from functools import partial
 
 from queue_func.core.consumer import BaseConsumer as _BaseConsumer
 from queue_func.pool_executor.base import BasePoolExecutor
@@ -17,10 +18,8 @@ class Consumer(_BaseConsumer[bytes, Resource]):
         "_prefetch_count",
         "_prefetch_size",
         "_global_qos",
-        "_channel",
+        # "_channel",
         "_queue",
-        "_iterator",
-        "_setup_lock",
     )
 
     def __init__(
@@ -30,7 +29,6 @@ class Consumer(_BaseConsumer[bytes, Resource]):
             prefetch_size: int,
             global_qos: bool,
             coro: t.Callable[..., t.Coroutine],
-            enable_consumer: bool,
             consume_timeout: float,
             pool_executor_cls: type[BasePoolExecutor],
             pool_maxsize: int):
@@ -38,7 +36,6 @@ class Consumer(_BaseConsumer[bytes, Resource]):
         super().__init__(
             resource=resource,
             coro=coro,
-            enable_consumer=enable_consumer,
             consume_timeout=consume_timeout,
             pool_executor_cls=pool_executor_cls,
             pool_maxsize=pool_maxsize,
@@ -46,55 +43,35 @@ class Consumer(_BaseConsumer[bytes, Resource]):
         self._prefetch_count = prefetch_count
         self._prefetch_size = prefetch_size
         self._global_qos = global_qos
-        self._channel: "AbstractChannel | None" = None
+        # self._channel: "AbstractChannel | None" = None
         self._queue: "AbstractQueue | None" = None
-        self._setup_lock = asyncio.Lock()
 
-    async def _consume(self) -> None:
+    async def _consume_once(self) -> None:
 
-        await self._ensure_queue()
-        while not self._stopped:
-            async with self._queue.iterator(timeout=self._consume_timeout) as queue_iter:
-                self._mark_running()
-                try:
-                    message: "AbstractIncomingMessage"
-                    async for message in queue_iter:
-                        body: bytes = message.body
-                        coro_args, coro_kwargs = self._resource.serializer.unpack(body)
-                        await self._dispatch(coro_args, coro_kwargs)
-                        await message.ack()
-                except asyncio.TimeoutError:
-                    continue
+        queue = await self._ensure_queue()
+        async with queue.iterator(timeout=self._consume_timeout) as queue_iter:
+            message: "AbstractIncomingMessage"
+            try:
+                async for message in queue_iter:
+                    body: bytes = message.body
+                    await self._dispatch(body)
+                    await message.ack()
+            except asyncio.TimeoutError:
+                pass
 
-    async def _ensure_queue(self) -> None:
+    async def _ensure_queue(self) -> "AbstractQueue":
 
         if self._queue is not None:
-            return None
+            return self._queue
 
-        async with self._setup_lock:
-            if self._queue is not None:
-                return None
-            channel = await self._resource.get_channel()
-            await channel.set_qos(
-                prefetch_count=self._prefetch_count,
-                prefetch_size=self._prefetch_size,
-                global_=self._global_qos,
-            )
-            queue = await self._resource.declare_queue(channel)
-            self._channel, self._queue = channel, queue
-
-    async def _release(self) -> None:
-
-        channel = self._channel
-        if channel is None:
-            return None
-        self._channel = None
-        self._queue = None
-        await self._resource.close_channel(channel)
-        await self._resource.try_close_connection()
-
-    def _register_shutdown(self) -> None:
-
-        self._shutdown.register(self._startup.wait)
-        self._shutdown.register(self._release)
-        self._shutdown.register(self._join_pool_executor)
+        self._on_cleanup.register(self._resource.try_close_connection)
+        channel = await self._resource.get_channel()
+        self._on_cleanup.register(partial(self._resource.close_channel, channel))
+        await channel.set_qos(
+            prefetch_count=self._prefetch_count,
+            prefetch_size=self._prefetch_size,
+            global_=self._global_qos,
+        )
+        queue = await self._resource.declare_queue(channel)
+        self._queue = queue
+        return queue

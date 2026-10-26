@@ -146,6 +146,7 @@ class FakeWorld:
     async def connect_robust(self, url: str) -> FakeConnection:
 
         self.urls.append(url)
+        self.connection.closed = False
         return self.connection
 
 

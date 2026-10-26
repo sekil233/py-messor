@@ -94,3 +94,34 @@ async def test_connection_closes_only_after_the_last_channel():
     assert second.closed is True
     assert world.connection.closed is True
     assert resource._active_channel_num == 0
+
+
+@run_async
+async def test_connection_reconnects_after_close():
+
+    world = FakeWorld()
+    resource = _resource(world)
+
+    with patch_connect(world):
+        first = await resource.get_channel()
+        await resource.close_channel(first)
+        await resource.try_close_connection()
+
+        assert resource._conn is None
+        assert world.connection.closed is True
+
+        # 已关闭时重复调用不触发重连也不报错（幂等）
+        await resource.try_close_connection()
+        assert len(world.urls) == 1
+
+        second = await resource.get_channel()
+        assert len(world.urls) == 2
+        assert resource._conn is world.connection
+        assert world.connection.closed is False
+        assert second.closed is False
+
+        await resource.close_channel(second)
+        await resource.try_close_connection()
+
+    assert len(world.urls) == 2
+    assert resource._active_channel_num == 0

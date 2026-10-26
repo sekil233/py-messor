@@ -40,7 +40,6 @@ class Broker(_BaseBroker["Config", bytes]):
             prefetch_size=config.prefetch_size,
             global_qos=config.global_qos,
             coro=config.coro,
-            enable_consumer=config.enable_consumer,
             consume_timeout=config.consume_timeout,
             pool_executor_cls=config.consumer_pool_executor_cls,
             pool_maxsize=config.consumer_pool_maxsize,

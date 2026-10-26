@@ -26,13 +26,12 @@ def _resource(maxsize: int) -> Resource:
     return Resource(Serializer, maxsize=maxsize)
 
 
-def _consumer(resource: Resource, handler, *, enabled: bool = True, pool_maxsize: int = 2) -> Consumer:
+def _consumer(resource: Resource, handler, *, pool_maxsize: int = 2) -> Consumer:
 
     return Consumer(
         resource=resource,
         consume_timeout=0.05,
         coro=handler,
-        enable_consumer=enabled,
         pool_executor_cls=PoolExecutor,
         pool_maxsize=pool_maxsize,
     )
@@ -57,21 +56,6 @@ async def test_consumer_runs_coro_with_unpacked_args():
     await consumer.join()
 
     assert received == [(1, 2, 3)]
-
-
-@run_async
-async def test_consumer_disabled_does_not_start_consume_loop():
-
-    resource = _resource(1)
-
-    async def handler():
-        raise AssertionError("should not run")
-
-    consumer = _consumer(resource, handler, enabled=False, pool_maxsize=1)
-
-    await consumer.consume()
-    assert consumer._startup._task is None
-    assert consumer._pool_executor is None
 
 
 @run_async

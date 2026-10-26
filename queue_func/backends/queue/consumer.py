@@ -1,33 +1,47 @@
 # coding: utf-8
 
 import asyncio
-import typing as t
 
 from queue_func.serializer.base import Message
 from queue_func.backends.queue.resource import Resource
-from queue_func.pool_executor.base import BasePoolExecutor
+from queue_func.core._inflight import dec
 from queue_func.core.consumer import BaseConsumer as _BaseConsumer
 
 
 class Consumer(_BaseConsumer[Message, Resource]):
 
-    async def _consume(self) -> None:
+    __slots__ = ()
 
-        while (not self._stopped) or (not self._resource.queue.empty()):
-            self._mark_running()
-            try:
-                message: Message = await asyncio.wait_for(
-                    self._resource.queue.get(),
-                    timeout=self._consume_timeout,
-                )
-            except asyncio.TimeoutError:
-                continue
-            coro_args, coro_kwargs = self._resource.serializer.unpack(message)
-            await self._dispatch(coro_args, coro_kwargs)
-            self._resource.queue.task_done()
+    def __init__(self, *args, **kwargs):
 
-    def _register_shutdown(self) -> None:
+        super().__init__(*args, **kwargs)
+        # coro 执行完成后 -1
+        self._on_coro_done.register(dec)
+    
+    async def _consume_once(self) -> Message | None:
 
-        self._shutdown.register(self._startup.wait)
-        self._shutdown.register(self._resource.queue.join)
-        self._shutdown.register(self._join_pool_executor)
+        queue = self._resource.queue
+        try:
+            message: Message = await asyncio.wait_for(
+                queue.get(),
+                timeout=self._consume_timeout,
+            )
+        except asyncio.TimeoutError:
+            return None
+        else:
+            await self._dispatch(message)
+            queue.task_done()
+            return message
+
+    async def _drain(self) -> None:
+
+        queue = self._resource.queue
+        while not queue.empty():
+            message: Message = queue.get_nowait()
+            await self._dispatch(message)
+            queue.task_done()
+
+    async def _on_shutdown(self) -> None:
+
+        await self._resource.queue.join()
+        await self._pool_executor.obj.join()

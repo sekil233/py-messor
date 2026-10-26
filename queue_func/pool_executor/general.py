@@ -4,7 +4,7 @@ import asyncio
 import typing as t
 
 from queue_func.pool_executor.base import BasePoolExecutor
-from queue_func.pool_executor.utils import JoinableSemaphore
+from queue_func.utils.sem import JoinableSemaphore
 
 
 class PoolExecutor(BasePoolExecutor):

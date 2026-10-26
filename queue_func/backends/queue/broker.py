@@ -16,6 +16,8 @@ if t.TYPE_CHECKING:
 class Broker(_BaseBroker["Config", Message]):
     """内存队列通道。队列由这里创建，再交给 Producer 和 Consumer。"""
 
+    IS_MEMORY = True
+
     def __init__(self, config: "Config"):
         resource = Resource(
             serializer_cls=config.serializer_cls,
@@ -27,7 +29,6 @@ class Broker(_BaseBroker["Config", Message]):
         self._consumer = Consumer(
             resource=resource,
             coro=config.coro,
-            enable_consumer=config.enable_consumer,
             consume_timeout=config.consume_timeout,
             pool_executor_cls=config.consumer_pool_executor_cls,
             pool_maxsize=config.consumer_pool_maxsize,

@@ -10,11 +10,14 @@
 
 import asyncio
 
-from queue_func.factory import Backend, QueueFuncRuntime, queue
+from queue_func.factory import App, Backend
+
+app = App()
 
 
-@queue(
+@app.queue(
     Backend.RABBIT_AIO_PIKA,
+    name="task_b",
     url="amqp://guest:guest@127.0.0.1:5672/",
     queue_name="demo_rabbit_b",
     enable_declare_queue=True,
@@ -26,8 +29,9 @@ async def task_b(order_id: str) -> None:
     print("b", order_id)
 
 
-@queue(
+@app.queue(
     Backend.RABBIT_AIO_PIKA,
+    name="task_a",
     url="amqp://guest:guest@127.0.0.1:5672/",
     queue_name="demo_rabbit_a",
     enable_declare_queue=True,
@@ -42,10 +46,9 @@ async def task_a(order_id: str) -> None:
 
 async def main() -> None:
 
-    runtime = QueueFuncRuntime([task_a, task_b])
-    await runtime.start()
+    await app.start()
     await task_a.push(args=("订单-001",))
-    await runtime.stop()
+    await app.stop()
 
 
 if __name__ == "__main__":

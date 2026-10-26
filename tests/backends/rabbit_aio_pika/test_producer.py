@@ -138,7 +138,10 @@ async def test_stop_waits_for_inflight_publish_then_closes():
             await producer.join()
 
         shutdown_task = asyncio.create_task(shutdown())
-        await wait_until(lambda: producer._stopped)
+        # stop 必须在等在途 publish 完成之后才真正停止/关闭资源
+        await asyncio.sleep(0.02)
+        assert not producer._stopped
+        assert world.connection.closed is False
         world_exchange_block.set()
         await publish_task
         await shutdown_task
@@ -146,7 +149,7 @@ async def test_stop_waits_for_inflight_publish_then_closes():
     channel = world.connection.channels[0]
     assert channel.closed is True
     assert world.connection.closed is True
-    assert producer._channel is None
+    assert producer._stopped is True
 
 
 @run_async
@@ -157,8 +160,9 @@ async def test_publish_after_stop_raises():
 
     with patch_connect(world):
         await producer.stop()
+        # stop() 是异步发起，join() 等待真正停止完成后才拒绝新 publish
+        await producer.join()
         with pytest.raises(RuntimeError):
             await producer.publish((), {})
-        await producer.join()
 
     assert world.urls == []
