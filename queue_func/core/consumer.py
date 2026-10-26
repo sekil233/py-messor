@@ -115,4 +115,3 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         
         if self._worker is not None:
             await self._worker
-
