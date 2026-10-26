@@ -1,18 +1,18 @@
 [tool.poetry]
-name = "messor"
+name = "py-messor"
 version = "0.2.4"
 description = "Async coroutine functions as queue-backed tasks (QueueFunc)."
 authors = ["liuseki <liuseki@163.com>"]
 license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/sekil9529/queue-func"
-repository = "https://github.com/sekil9529/queue-func"
-documentation = "https://github.com/sekil9529/queue-func#readme"
+homepage = "https://github.com/sekil9529/py-messor"
+repository = "https://github.com/sekil9529/py-messor"
+documentation = "https://github.com/sekil9529/py-messor#readme"
 packages = [{ include = "messor" }]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/sekil9529/queue-func/blob/master/CHANGELOG.md"
-Issues = "https://github.com/sekil9529/queue-func/issues"
+Changelog = "https://github.com/sekil9529/py-messor/blob/master/CHANGELOG.md"
+Issues = "https://github.com/sekil9529/py-messor/issues"
 
 [tool.poetry.dependencies]
 python = "^3.12"
