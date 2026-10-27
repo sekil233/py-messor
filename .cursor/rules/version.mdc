@@ -45,3 +45,14 @@ alwaysApply: true
 ## 发版前
 
 打 tag、`poetry build`、上传 PyPI 之前，先核对 `pyproject.toml` 与 `CHANGELOG.md` 都已经是这个版本，且 changelog 写了本版内容。
+
+## 创建新版本与发布
+
+1. 从 `master` 切出 `dev/<版本号>`，例如 `dev/0.2.5`
+2. 从 `dev/<版本号>` 切出个人开发分支：
+   - 常规开发：`feature/<版本号>-<描述>`，单人开发省略 `<描述>`，如 `feature/0.2.5`
+   - 热修：`fix/<版本号>-<描述>`
+3. 日常提交都在个人分支（`feature/`、`fix/`）上进行
+4. 发版前把个人分支合并到 `dev/<版本号>`（尽可能把多次提交合并为一次提交）
+5. 在 GitHub 上从 `dev/<版本号>` 向 `master` 发起 Pull Request，人工合并——不在本地合并 `master`
+6. 合并后从 `master` 打 tag（如 `0.2.5`），在 tag 上 `poetry build` 并上传 PyPI
