@@ -6,6 +6,7 @@
 0.2.4
 -----
 
+* feat: 变更项目名为 `py-messor`
 * feat: 新增 `App` 统一管理队列，`@app.queue(name=...)` 注册，`name` 必填且唯一；`start(queues=[...])` 可选择性启动消费者，绑定的内存队列必须全部包含，否则报错
 * feat: 消费者按逆序启动（下游先就绪），`stop` 按关闭编排回收：非内存 consumer 先停 -> `wait_drained` -> 内存 consumer -> producer
 * feat: 新增进程级在途计数 `_Inflight`，`wait_drained` 等全部在途消息处理完成
