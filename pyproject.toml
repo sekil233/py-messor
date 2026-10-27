@@ -7,7 +7,6 @@ license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/sekil233/py-messor"
 repository = "https://github.com/sekil233/py-messor"
-documentation = ""
 packages = [{ include = "messor" }]
 
 [tool.poetry.urls]
