@@ -13,7 +13,7 @@ from tests.helpers import run_async
 @run_async
 async def test_producer_publish_puts_packed_message_on_queue():
 
-    resource: Resource = Resource(Serializer, maxsize=2)
+    resource: Resource = Resource(Serializer, maxsize=2, name="q")
     producer = Producer(resource, publish_timeout=None)
 
     await producer.publish((1, 2), {"c": 3})
@@ -25,7 +25,7 @@ async def test_producer_publish_puts_packed_message_on_queue():
 @run_async
 async def test_producer_publish_timeout_raises_when_queue_full():
 
-    resource: Resource = Resource(Serializer, maxsize=1)
+    resource: Resource = Resource(Serializer, maxsize=1, name="q")
     await resource.queue.put(b"block")
     producer = Producer(resource, publish_timeout=0.05)
 
@@ -38,7 +38,7 @@ async def test_producer_publish_timeout_raises_when_queue_full():
 @run_async
 async def test_producer_publish_call_timeout_overrides_config():
 
-    resource: Resource = Resource(Serializer, maxsize=1)
+    resource: Resource = Resource(Serializer, maxsize=1, name="q")
     await resource.queue.put(b"block")
     producer = Producer(resource, publish_timeout=None)
 
@@ -49,7 +49,7 @@ async def test_producer_publish_call_timeout_overrides_config():
 @run_async
 async def test_producer_stop_rejects_later_publish_and_join_returns():
 
-    resource: Resource = Resource(Serializer, maxsize=1)
+    resource: Resource = Resource(Serializer, maxsize=1, name="q")
     producer = Producer(resource, publish_timeout=None)
 
     await producer.stop()

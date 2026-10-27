@@ -8,6 +8,12 @@ import typing as t
 from messor.serializer.base import Message
 from messor.core.resource import Resource
 from messor.pool_executor.base import BasePoolExecutor
+from messor.ratelimit.base import BaseRateLimiter
+from messor.ratelimit.enums import (
+    RateLimiter,
+    RateLimitStorage,
+    build_rate_limiter,
+)
 from messor.utils.hook import Hooks, HookOrder
 from messor.utils.lazy import LazyObject
 
@@ -25,6 +31,7 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         "_startup",
         "_logger",
         "_task",
+        "_rate_limiter",
     )
 
     def __init__(
@@ -33,7 +40,11 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
             coro: t.Callable[..., t.Coroutine],
             consume_timeout: float,
             pool_executor_cls: type[BasePoolExecutor],
-            pool_maxsize: int):
+            pool_maxsize: int,
+            rate_limit: str | None = None,
+            rate_limiter: RateLimiter = RateLimiter.TOKEN_BUCKET,
+            rate_limit_storage: RateLimitStorage = RateLimitStorage.MEMORY,
+            rate_limit_key: str | None = None):
 
         self._resource = resource
         self._coro = coro
@@ -46,6 +57,15 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         self._startup = asyncio.Event()
         self._logger = logging.getLogger(__name__)
         self._task: asyncio.Task | None = None
+        # 限流器：rate_limit 为空则不限流
+        self._rate_limiter: BaseRateLimiter | None = None
+        if rate_limit is not None:
+            self._rate_limiter = build_rate_limiter(
+                rate_limiter,
+                rate_limit_storage,
+                rate=rate_limit,
+                key=rate_limit_key or self._resource.name,
+            )
 
     async def consume(self) -> None:
 
@@ -93,8 +113,10 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
         pass
 
     async def _dispatch(self, message: Message) -> None:
-        """消息处理"""
+        """消息处理：先限流取名额，再提交给执行器"""
 
+        if self._rate_limiter is not None:
+            await self._rate_limiter.acquire()
         coro_args, coro_kwargs = self._resource.serializer.unpack(message)
         await self._pool_executor.obj.submit(self._run_coro, coro_args, coro_kwargs)
 

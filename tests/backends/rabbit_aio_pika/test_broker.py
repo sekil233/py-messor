@@ -18,6 +18,7 @@ async def test_broker_shares_one_connection_until_both_sides_release():
 
     config = Config(
         coro=work,
+        name="q",
         url="amqp://guest:guest@127.0.0.1/",
         queue_name="jobs",
         consume_timeout=0.05,

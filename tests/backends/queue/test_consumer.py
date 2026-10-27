@@ -23,7 +23,7 @@ async def _wait_until(predicate, *, timeout: float = 2.0, interval: float = 0.02
 
 def _resource(maxsize: int) -> Resource:
 
-    return Resource(Serializer, maxsize=maxsize)
+    return Resource(Serializer, maxsize=maxsize, name="q")
 
 
 def _consumer(resource: Resource, handler, *, pool_maxsize: int = 2) -> Consumer:

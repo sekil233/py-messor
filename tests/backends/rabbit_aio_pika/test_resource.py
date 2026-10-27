@@ -11,6 +11,7 @@ def _resource(world: FakeWorld, **kwargs) -> Resource:
 
     values = dict(
         serializer_cls=Serializer,
+        name="q",
         url="amqp://guest:guest@127.0.0.1/",
         queue_name="jobs",
         enable_declare_queue=False,

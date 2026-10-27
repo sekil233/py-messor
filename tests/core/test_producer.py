@@ -22,7 +22,7 @@ class _Producer(BaseProducer[Message, BaseResource]):
 
 def _resource() -> BaseResource:
 
-    return BaseResource(Serializer)
+    return BaseResource(Serializer, "q")
 
 
 @run_async

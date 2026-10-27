@@ -32,6 +32,7 @@ class Resource(_Base[Message]):
     def __init__(
             self,
             serializer_cls: type[BaseSerializer],
+            name: str,
             url: str,
             queue_name: str,
             enable_declare_queue: bool,
@@ -41,7 +42,7 @@ class Resource(_Base[Message]):
             queue_auto_delete: bool,
             queue_arguments: dict[str, t.Any] | None):
 
-        super().__init__(serializer_cls)
+        super().__init__(serializer_cls, name)
         self._queue_name = queue_name
         self._url = url
         self._conn: "AbstractConnection | None" = None

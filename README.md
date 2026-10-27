@@ -90,6 +90,25 @@ await process_order(1)
 | `demo_rabbit_aio_pika.py` | RabbitMQ 队列 |
 | `demo_network.py` | 混合队列网络（内存 + RabbitMQ 回环） |
 
+## 限流
+
+每个 `queue` 可独立配置消费速率，相关参数均在 `@app.queue(..., **kwargs)` 上配置：
+
+- `rate_limit`：消费速率 `<n>/<unit>`，如 `100/s`、`50/m`、`10/h`、`5/d`；`None`（默认）不限流。
+- `rate_limiter`：算法，`RateLimiter.TOKEN_BUCKET`（默认）、`RateLimiter.FIXED_WINDOW`、`RateLimiter.LEAKY_BUCKET`。
+- `rate_limit_storage`：计数存储，`RateLimitStorage.MEMORY`（默认，进程内存）；可扩展 Redis 等持久化存储实现跨实例共享计数。
+- `rate_limit_key`：限流桶 key，默认取队列逻辑名、前缀 `messor:rate:`（如 `messor:rate:process_order`）；可覆盖，共享同一存储时自定义作用域。
+
+### 示例
+
+```python
+@app.queue(Backend.QUEUE, name="process_order", rate_limit="100/s")
+async def process_order(order_id: int) -> None:
+    print(order_id)
+```
+
+> 注意：内存存储的计数在进程重启后清零，多实例部署下各自计数、不满足全局限流；`/h`、`/d` 等长窗口会整窗驻留内存。此时代码会发出 `UserWarning`，建议改用持久化存储。
+
 ## 内部结构
 
 `@app.queue` 装饰的协程就是一条队列。`push` 投到它自己这条队列上。

@@ -58,6 +58,8 @@ class App:
 
         def decorator(fn: t.Callable[_P, t.Coroutine[t.Any, t.Any, _R]]) -> QueueFunc[_P, _R]:
 
+            # 队列逻辑名写入配置，供限流桶 key 等使用
+            config_kwargs["name"] = name
             broker = build_broker(backend, fn, **config_kwargs)
             func = QueueFunc(fn, broker)
             self._funcs[name] = func
