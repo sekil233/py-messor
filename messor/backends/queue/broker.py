@@ -21,7 +21,8 @@ class Broker(_BaseBroker["Config", Message]):
     def __init__(self, config: "Config"):
         resource = Resource(
             serializer_cls=config.serializer_cls,
-            maxsize=config.maxsize)
+            maxsize=config.maxsize,
+            name=config.name)
         self._producer = Producer(
             resource=resource,
             publish_timeout=config.publish_timeout,
@@ -32,4 +33,8 @@ class Broker(_BaseBroker["Config", Message]):
             consume_timeout=config.consume_timeout,
             pool_executor_cls=config.consumer_pool_executor_cls,
             pool_maxsize=config.consumer_pool_maxsize,
+            rate_limit=config.rate_limit,
+            rate_limiter=config.rate_limiter,
+            rate_limit_storage=config.rate_limit_storage,
+            rate_limit_key=config.rate_limit_key,
         )

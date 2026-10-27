@@ -13,7 +13,7 @@ from tests.helpers import run_async
 @run_async
 async def test_resource_put_then_get_returns_same_item():
 
-    resource: Resource[bytes] = Resource(Serializer, maxsize=2)
+    resource: Resource[bytes] = Resource(Serializer, maxsize=2, name="q")
 
     assert resource.serializer is Serializer
 
@@ -30,7 +30,7 @@ async def test_resource_put_then_get_returns_same_item():
 @run_async
 async def test_resource_empty_follows_queue_contents():
 
-    resource: Resource[int] = Resource(Serializer, maxsize=2)
+    resource: Resource[int] = Resource(Serializer, maxsize=2, name="q")
 
     assert resource.queue.empty() is True
 
@@ -46,7 +46,7 @@ async def test_resource_empty_follows_queue_contents():
 @run_async
 async def test_resource_join_waits_until_task_done():
 
-    resource: Resource[str] = Resource(Serializer, maxsize=1)
+    resource: Resource[str] = Resource(Serializer, maxsize=1, name="q")
     await resource.queue.put("item")
     done = False
 
@@ -67,7 +67,7 @@ async def test_resource_join_waits_until_task_done():
 @run_async
 async def test_resource_task_done_without_get_raises():
 
-    resource: Resource[int] = Resource(Serializer, maxsize=1)
+    resource: Resource[int] = Resource(Serializer, maxsize=1, name="q")
 
     with pytest.raises(ValueError):
         resource.queue.task_done()

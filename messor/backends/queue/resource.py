@@ -12,9 +12,9 @@ class Resource(_Base[Message]):
         "_queue",
     )
 
-    def __init__(self, serializer_cls: type[BaseSerializer], maxsize: int) -> None:
+    def __init__(self, serializer_cls: type[BaseSerializer], maxsize: int, name: str) -> None:
 
-        super().__init__(serializer_cls)
+        super().__init__(serializer_cls, name)
         self._queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=maxsize)
 
     @property

@@ -6,6 +6,7 @@ from functools import partial
 
 from messor.core.consumer import BaseConsumer as _BaseConsumer
 from messor.pool_executor.base import BasePoolExecutor
+from messor.ratelimit.enums import RateLimiter, RateLimitStorage
 from messor.backends.rabbit_aio_pika.resource import Resource
 
 if t.TYPE_CHECKING:
@@ -31,7 +32,11 @@ class Consumer(_BaseConsumer[bytes, Resource]):
             coro: t.Callable[..., t.Coroutine],
             consume_timeout: float,
             pool_executor_cls: type[BasePoolExecutor],
-            pool_maxsize: int):
+            pool_maxsize: int,
+            rate_limit: str | None = None,
+            rate_limiter: RateLimiter = RateLimiter.TOKEN_BUCKET,
+            rate_limit_storage: RateLimitStorage = RateLimitStorage.MEMORY,
+            rate_limit_key: str | None = None):
 
         super().__init__(
             resource=resource,
@@ -39,6 +44,10 @@ class Consumer(_BaseConsumer[bytes, Resource]):
             consume_timeout=consume_timeout,
             pool_executor_cls=pool_executor_cls,
             pool_maxsize=pool_maxsize,
+            rate_limit=rate_limit,
+            rate_limiter=rate_limiter,
+            rate_limit_storage=rate_limit_storage,
+            rate_limit_key=rate_limit_key,
         )
         self._prefetch_count = prefetch_count
         self._prefetch_size = prefetch_size
