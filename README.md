@@ -1,7 +1,7 @@
 # py-messor
 
-[![Coverage Status](https://coveralls.io/repos/github/sekil9529/py-messor/badge.svg?branch=master)](https://coveralls.io/github/sekil9529/py-messor)
-[![tests](https://github.com/sekil9529/py-messor/actions/workflows/tests.yml/badge.svg)](https://github.com/sekil9529/py-messor/actions?query=workflow%3Atests)
+[![Coverage Status](https://coveralls.io/repos/github/sekil233/py-messor/badge.svg?branch=master)](https://coveralls.io/github/sekil233/py-messor)
+[![tests](https://github.com/sekil233/py-messor/actions/workflows/tests.yml/badge.svg)](https://github.com/sekil233/py-messor/actions?query=workflow%3Atests)
 [![Latest Version](https://img.shields.io/pypi/v/py-messor.svg)](https://pypi.org/project/py-messor/)
 [![Wheel](https://img.shields.io/pypi/wheel/py-messor.svg)](https://pypi.org/project/py-messor/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/py-messor.svg)](https://pypi.org/project/py-messor/)
