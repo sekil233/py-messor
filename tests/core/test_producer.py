@@ -4,31 +4,31 @@ import pytest
 
 from messor.serializer.base import Message
 from messor.serializer.raw import Serializer
-from messor.core.resource import BaseResource
+from messor.core.channel import BaseChannel
 from messor.core.producer import BaseProducer
 
 from tests.helpers import run_async
 
 
-class _Producer(BaseProducer[Message, BaseResource]):
+class _Producer(BaseProducer[Message, BaseChannel]):
 
-    def __init__(self, resource: BaseResource, publish_timeout: float | None):
+    def __init__(self, channel: BaseChannel, publish_timeout: float | None):
         self.published: list[tuple] = []
-        super().__init__(resource, publish_timeout)
+        super().__init__(channel, publish_timeout)
 
     async def _publish(self, msg: Message, *, timeout: float | None) -> None:
         self.published.append((msg, timeout))
 
 
-def _resource() -> BaseResource:
+def _channel() -> BaseChannel:
 
-    return BaseResource(Serializer, "q")
+    return BaseChannel(Serializer)
 
 
 @run_async
 async def test_publish_packs_and_uses_config_timeout():
 
-    producer = _Producer(_resource(), publish_timeout=1.5)
+    producer = _Producer(_channel(), publish_timeout=1.5)
 
     await producer.publish((1, 2), {"c": 3})
 
@@ -41,7 +41,7 @@ async def test_publish_packs_and_uses_config_timeout():
 @run_async
 async def test_publish_call_timeout_overrides_config():
 
-    producer = _Producer(_resource(), publish_timeout=1.5)
+    producer = _Producer(_channel(), publish_timeout=1.5)
 
     await producer.publish((1, 2), {"c": 3}, timeout=0.25)
 
@@ -54,10 +54,10 @@ async def test_publish_call_timeout_overrides_config():
 @run_async
 async def test_publish_after_stop_raises_runtime_error():
 
-    producer = _Producer(_resource(), publish_timeout=None)
+    producer = _Producer(_channel(), publish_timeout=None)
 
     await producer.stop()
-    # stop() 是异步发起，join() 等待真正停止完成（_stopped 置位）后才拒绝新 publish
+    # stop() 是异步发起，停止流程开始后新 publish 即被拒绝
     await producer.join()
 
     with pytest.raises(RuntimeError):
@@ -74,7 +74,7 @@ async def test_stop_waits_for_in_flight_publish():
         async def _publish(self, msg: Message, *, timeout: float | None) -> None:
             await gate.wait()
 
-    producer = _BlockingProducer(_resource(), publish_timeout=None)
+    producer = _BlockingProducer(_channel(), publish_timeout=None)
 
     publishing = asyncio.create_task(producer.publish((), {}))
     await asyncio.sleep(0.01)

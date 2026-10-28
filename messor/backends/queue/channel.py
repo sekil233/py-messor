@@ -3,18 +3,18 @@
 import asyncio
 
 from messor.serializer.base import Message, BaseSerializer
-from messor.core.resource import BaseResource as _Base
+from messor.core.channel import BaseChannel as _Base
 
 
-class Resource(_Base[Message]):
+class Channel(_Base[Message]):
 
     __slots__ = (
         "_queue",
     )
 
-    def __init__(self, serializer_cls: type[BaseSerializer], maxsize: int, name: str) -> None:
+    def __init__(self, serializer_cls: type[BaseSerializer], maxsize: int) -> None:
 
-        super().__init__(serializer_cls, name)
+        super().__init__(serializer_cls)
         self._queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=maxsize)
 
     @property

@@ -21,7 +21,14 @@ def test_config_defaults():
     assert config.consumer_pool_executor_cls is PoolExecutor
     assert config.consumer_pool_maxsize == 200
     assert config.publish_timeout is None
+    assert config.producer_pool_maxsize == 3
     assert config.name == "q"
+
+
+def test_config_producer_pool_maxsize_accepts_none_and_positive():
+
+    assert Config(coro=noop, name="q", producer_pool_maxsize=None).producer_pool_maxsize is None
+    assert Config(coro=noop, name="q", producer_pool_maxsize=1).producer_pool_maxsize == 1
 
 
 def test_config_requires_coro():

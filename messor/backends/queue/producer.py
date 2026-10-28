@@ -6,10 +6,10 @@ from messor.errors import PublishTimeoutError
 from messor.serializer.base import Message
 from messor.core._inflight import inc
 from messor.core.producer import BaseProducer
-from messor.backends.queue.resource import Resource
+from messor.backends.queue.channel import Channel
 
 
-class Producer(BaseProducer[Message, Resource]):
+class Producer(BaseProducer[Message, Channel]):
 
     def __init__(self, *args, **kwargs):
 
@@ -21,8 +21,8 @@ class Producer(BaseProducer[Message, Resource]):
 
         if timeout:
             try:
-                await asyncio.wait_for(self._resource.queue.put(msg), timeout)
+                await asyncio.wait_for(self._channel.queue.put(msg), timeout)
             except asyncio.TimeoutError as exc:
                 raise PublishTimeoutError("publish timed out") from exc
             return None
-        await self._resource.queue.put(msg)
+        await self._channel.queue.put(msg)

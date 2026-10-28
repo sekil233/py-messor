@@ -5,7 +5,7 @@ import typing as t
 from messor.core.broker import BaseBroker as _BaseBroker
 from messor.backends.rabbit_aio_pika.consumer import Consumer
 from messor.backends.rabbit_aio_pika.producer import Producer
-from messor.backends.rabbit_aio_pika.resource import Resource
+from messor.backends.rabbit_aio_pika.channel import Channel
 
 if t.TYPE_CHECKING:
     from messor.backends.rabbit_aio_pika.config import Config
@@ -16,9 +16,8 @@ class Broker(_BaseBroker["Config", bytes]):
 
     def __init__(self, config: "Config"):
 
-        resource = Resource(
+        channel = Channel(
             serializer_cls=config.serializer_cls,
-            name=config.name,
             url=config.url,
             queue_name=config.queue_name,
             enable_declare_queue=config.enable_declare_queue,
@@ -29,14 +28,16 @@ class Broker(_BaseBroker["Config", bytes]):
             queue_arguments=config.queue_arguments,
         )
         self._producer = Producer(
-            resource=resource,
+            channel=channel,
             publish_timeout=config.publish_timeout,
             exchange_name=config.exchange_name,
             routing_key=config.routing_key,
             delivery_mode=config.delivery_mode,
+            producer_pool_maxsize=config.producer_pool_maxsize,
         )
         self._consumer = Consumer(
-            resource=resource,
+            channel=channel,
+            name=config.name,
             prefetch_count=config.prefetch_count,
             prefetch_size=config.prefetch_size,
             global_qos=config.global_qos,

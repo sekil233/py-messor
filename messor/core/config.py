@@ -23,13 +23,12 @@ ExtraIgnoreConfig = ConfigDict(
 @pyd_dataclass(frozen=True, kw_only=True, config=ExtraIgnoreConfig)
 class Config:
 
-    ## shared resource
+    ## shared channel
     serializer_cls: type[BaseSerializer] = Serializer
 
-    # 队列逻辑名，每个队列唯一
-    name: str
-
     ## consumer
+    # 队列逻辑名，每个队列唯一；限流桶 key 默认取它
+    name: str
     coro: t.Callable[[...], t.Coroutine]
     consume_timeout: float = 2.0
     consumer_pool_executor_cls: type[BasePoolExecutor] = PoolExecutor
@@ -45,3 +44,5 @@ class Config:
 
     ## producer
     publish_timeout: float | None = None
+    # 生产者对象池规模，由各 backend 自行使用；None 表示不使用池
+    producer_pool_maxsize: int | None = 3

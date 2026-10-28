@@ -96,6 +96,11 @@ class FakeChannel:
         self.qos: dict | None = None
         self.closed = False
 
+    @property
+    def is_closed(self) -> bool:
+
+        return self.closed
+
     async def declare_queue(self, name: str, **kwargs):
 
         self.declared.append((name, kwargs))
@@ -154,7 +159,7 @@ class FakeWorld:
 def patch_connect(world: FakeWorld):
 
     with patch(
-            "messor.backends.rabbit_aio_pika.resource.aio_pika.connect_robust",
+            "messor.backends.rabbit_aio_pika.channel.aio_pika.connect_robust",
             world.connect_robust,
     ):
         yield world

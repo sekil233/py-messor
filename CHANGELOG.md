@@ -1,3 +1,10 @@
+0.3.1
+-----
+
+* feat: RabbitMQ 生产者支持 channel 池化，新增 `producer_pool_maxsize`（默认 `3`，默认由单 channel 变为至多 3 channel 并发）；`None` 表示不池化，单 channel 常驻复用（同旧行为）
+* fix: 生产者开始停止即拒绝新的 `push`，再等待在途投递完成，避免清理资源期间仍接受投递
+* refactor: 生产者/消费者共享对象 `Resource` 更名为 `Channel`；队列逻辑名 `name` 移出共享对象，仅保留在消费者侧
+
 0.3.0
 -----
 

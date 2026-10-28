@@ -8,17 +8,16 @@ from messor.backends.rabbit_aio_pika.config import DeliveryMode, ExchangeName
 from messor.errors import PublishTimeoutError
 from messor.backends.rabbit_aio_pika.producer import Producer
 from messor.serializer.orjson_ser import Serializer
-from messor.backends.rabbit_aio_pika.resource import Resource
+from messor.backends.rabbit_aio_pika.channel import Channel
 
 from tests.helpers import run_async
 from tests.rabbit_aio_pika_fakes import FakeWorld, patch_connect, wait_until
 
 
-def _resource(world: FakeWorld) -> Resource:
+def _channel(world: FakeWorld) -> Channel:
 
-    return Resource(
+    return Channel(
         serializer_cls=Serializer,
-        name="q",
         url="amqp://guest:guest@127.0.0.1/",
         queue_name="jobs",
         enable_declare_queue=False,
@@ -30,10 +29,10 @@ def _resource(world: FakeWorld) -> Resource:
     )
 
 
-def _producer(resource: Resource, **kwargs) -> Producer:
+def _producer(channel: Channel, **kwargs) -> Producer:
 
     values = dict(
-        resource=resource,
+        channel=channel,
         publish_timeout=None,
         exchange_name=ExchangeName.DEFAULT,
         routing_key="",
@@ -47,8 +46,8 @@ def _producer(resource: Resource, **kwargs) -> Producer:
 async def test_publish_uses_default_exchange_and_queue_name():
 
     world = FakeWorld()
-    resource = _resource(world)
-    producer = _producer(resource)
+    channel = _channel(world)
+    producer = _producer(channel)
 
     with patch_connect(world):
         await producer.publish((1, 2), {"c": 3})
@@ -64,12 +63,28 @@ async def test_publish_uses_default_exchange_and_queue_name():
 
 
 @run_async
+async def test_publish_reuses_single_channel_when_pool_disabled():
+
+    world = FakeWorld()
+    channel = _channel(world)
+    producer = _producer(channel)
+
+    with patch_connect(world):
+        await producer.publish((1,), {})
+        await producer.publish((2,), {})
+
+    assert len(world.connection.channels) == 1
+    channel = world.connection.channels[0]
+    assert len(channel.default_exchange.published) == 2
+
+
+@run_async
 async def test_publish_uses_named_exchange_and_routing_key():
 
     world = FakeWorld()
-    resource = _resource(world)
+    channel = _channel(world)
     producer = _producer(
-        resource,
+        channel,
         exchange_name=ExchangeName.TOPIC,
         routing_key="rk",
         delivery_mode=DeliveryMode.NOT_PERSISTENT,
@@ -91,8 +106,8 @@ async def test_publish_uses_named_exchange_and_routing_key():
 async def test_publish_timeout_raises_publish_timeout_error():
 
     world = FakeWorld()
-    resource = _resource(world)
-    producer = _producer(resource)
+    channel = _channel(world)
+    producer = _producer(channel)
 
     with patch_connect(world):
         channel_holder: list = []
@@ -116,8 +131,8 @@ async def test_publish_timeout_raises_publish_timeout_error():
 async def test_stop_waits_for_inflight_publish_then_closes():
 
     world = FakeWorld()
-    resource = _resource(world)
-    producer = _producer(resource)
+    channel = _channel(world)
+    producer = _producer(channel)
 
     with patch_connect(world):
         world_exchange_block = asyncio.Event()
@@ -139,9 +154,10 @@ async def test_stop_waits_for_inflight_publish_then_closes():
             await producer.join()
 
         shutdown_task = asyncio.create_task(shutdown())
-        # stop 必须在等在途 publish 完成之后才真正停止/关闭资源
+        # 停止开始即拒绝新投递，但必须等在途 publish 完成之后才关闭资源
         await asyncio.sleep(0.02)
-        assert not producer._stopped
+        assert producer._stopped is True
+        assert world.connection.channels[0].closed is False
         assert world.connection.closed is False
         world_exchange_block.set()
         await publish_task
@@ -157,7 +173,7 @@ async def test_stop_waits_for_inflight_publish_then_closes():
 async def test_publish_after_stop_raises():
 
     world = FakeWorld()
-    producer = _producer(_resource(world))
+    producer = _producer(_channel(world))
 
     with patch_connect(world):
         await producer.stop()
@@ -167,3 +183,120 @@ async def test_publish_after_stop_raises():
             await producer.publish((), {})
 
     assert world.urls == []
+
+
+@run_async
+async def test_concurrent_publish_opens_multiple_slots():
+
+    world = FakeWorld()
+    channel = _channel(world)
+    producer = _producer(channel, producer_pool_maxsize=3)
+
+    with patch_connect(world):
+        gate = asyncio.Event()
+
+        original = world.connection.channel
+
+        async def channel():
+            created = await original()
+            created.default_exchange.block = True
+            created.default_exchange.gate = gate
+            return created
+
+        world.connection.channel = channel
+        tasks = [asyncio.create_task(producer.publish((i,), {})) for i in range(3)]
+        await wait_until(lambda: len(world.connection.channels) == 3)
+        gate.set()
+        await asyncio.gather(*tasks)
+
+    total = sum(len(c.default_exchange.published) for c in world.connection.channels)
+    assert total == 3
+
+
+@run_async
+async def test_pooled_slot_is_reused_after_release():
+
+    world = FakeWorld()
+    channel = _channel(world)
+    producer = _producer(channel, producer_pool_maxsize=3)
+
+    with patch_connect(world):
+        for i in range(4):
+            await producer.publish((i,), {})
+
+    assert len(world.connection.channels) == 1
+    assert len(world.connection.channels[0].default_exchange.published) == 4
+
+
+@run_async
+async def test_pool_maxsize_limits_concurrent_channels():
+
+    world = FakeWorld()
+    channel = _channel(world)
+    producer = _producer(channel, producer_pool_maxsize=2)
+
+    with patch_connect(world):
+        gate = asyncio.Event()
+
+        original = world.connection.channel
+
+        async def channel():
+            created = await original()
+            created.default_exchange.block = True
+            created.default_exchange.gate = gate
+            return created
+
+        world.connection.channel = channel
+        tasks = [asyncio.create_task(producer.publish((i,), {})) for i in range(4)]
+        await wait_until(lambda: len(world.connection.channels) == 2)
+        # 超出上限的 publish 在等槽，不会开出新 channel
+        await asyncio.sleep(0.05)
+        assert len(world.connection.channels) == 2
+        gate.set()
+        await asyncio.gather(*tasks)
+
+    total = sum(len(c.default_exchange.published) for c in world.connection.channels)
+    assert total == 4
+    assert len(world.connection.channels) == 2
+
+
+@run_async
+async def test_unhealthy_idle_slot_is_discarded_and_rebuilt():
+
+    world = FakeWorld()
+    channel = _channel(world)
+    producer = _producer(channel, producer_pool_maxsize=2)
+
+    with patch_connect(world):
+        await producer.publish((1,), {})
+        # 模拟 channel 被 broker 侧关闭（如 passive declare 404）
+        world.connection.channels[0].closed = True
+        await producer.publish((2,), {})
+
+    assert len(world.connection.channels) == 2
+    assert len(world.connection.channels[1].default_exchange.published) == 1
+
+
+@run_async
+async def test_failed_publish_discards_slot_and_next_publish_rebuilds():
+
+    world = FakeWorld()
+    channel = _channel(world)
+    producer = _producer(channel, producer_pool_maxsize=2)
+
+    with patch_connect(world):
+        original = world.connection.channel
+        state = {"fail": True}
+
+        async def channel():
+            created = await original()
+            created.default_exchange.raise_timeout = state["fail"]
+            return created
+
+        world.connection.channel = channel
+        with pytest.raises(PublishTimeoutError):
+            await producer.publish((1,), {})
+        state["fail"] = False
+        await producer.publish((2,), {})
+
+    assert len(world.connection.channels) == 2

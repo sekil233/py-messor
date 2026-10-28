@@ -6,7 +6,7 @@ import logging
 import typing as t
 
 from messor.serializer.base import Message
-from messor.core.resource import Resource
+from messor.core.channel import Channel
 from messor.pool_executor.base import BasePoolExecutor
 from messor.ratelimit.base import BaseRateLimiter
 from messor.ratelimit.enums import (
@@ -18,10 +18,10 @@ from messor.utils.hook import Hooks, HookOrder
 from messor.utils.lazy import LazyObject
 
 
-class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
+class BaseConsumer(t.Generic[Message, Channel], metaclass=abc.ABCMeta):
 
     __slots__ = (
-        "_resource",
+        "_channel",
         "_coro",
         "_pool_executor",
         "_consume_timeout",
@@ -36,7 +36,8 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
 
     def __init__(
             self,
-            resource: Resource,
+            channel: Channel,
+            name: str,
             coro: t.Callable[..., t.Coroutine],
             consume_timeout: float,
             pool_executor_cls: type[BasePoolExecutor],
@@ -46,7 +47,7 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
             rate_limit_storage: RateLimitStorage = RateLimitStorage.MEMORY,
             rate_limit_key: str | None = None):
 
-        self._resource = resource
+        self._channel = channel
         self._coro = coro
         self._pool_executor = LazyObject[BasePoolExecutor](pool_executor_cls, pool_maxsize)
         self._consume_timeout = consume_timeout
@@ -64,7 +65,7 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
                 rate_limiter,
                 rate_limit_storage,
                 rate=rate_limit,
-                key=rate_limit_key or self._resource.name,
+                key=rate_limit_key or name,
             )
 
     async def consume(self) -> None:
@@ -117,7 +118,7 @@ class BaseConsumer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
 
         if self._rate_limiter is not None:
             await self._rate_limiter.acquire()
-        coro_args, coro_kwargs = self._resource.serializer.unpack(message)
+        coro_args, coro_kwargs = self._channel.serializer.unpack(message)
         await self._pool_executor.obj.submit(self._run_coro, coro_args, coro_kwargs)
 
     async def _run_coro(self, *coro_args, **coro_kwargs) -> None:
