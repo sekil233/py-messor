@@ -33,6 +33,7 @@ class Broker(_BaseBroker["Config", bytes]):
             exchange_name=config.exchange_name,
             routing_key=config.routing_key,
             delivery_mode=config.delivery_mode,
+            producer_pool_maxsize=config.producer_pool_maxsize,
         )
         self._consumer = Consumer(
             channel=channel,

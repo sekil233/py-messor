@@ -19,7 +19,6 @@ class BaseProducer(t.Generic[Message, Channel], metaclass=abc.ABCMeta):
         "_pub_waiter",
         "_on_cleanup",
         "_on_publish_success",
-        "_lock",
         "_stop_task",
     )
 
@@ -33,7 +32,6 @@ class BaseProducer(t.Generic[Message, Channel], metaclass=abc.ABCMeta):
         self._stopped = False
         self._pub_waiter = IdleWaiter()
         self._stop_task: asyncio.Task | None = None
-        self._lock = asyncio.Lock()
 
         ## push成功
         self._on_publish_success = Hooks(order=HookOrder.FIFO)
@@ -54,6 +52,9 @@ class BaseProducer(t.Generic[Message, Channel], metaclass=abc.ABCMeta):
         timeout = self._publish_timeout if timeout is None else timeout
         packed = self._channel.serializer.pack(coro_args, coro_kwargs)
         async with self._pub_waiter.hold():
+            # 进入在途后再校验：stop 可能已等待归还并开始清理
+            if self._stopped:
+                raise RuntimeError("publish called on already stopped")
             await self._publish(packed, timeout=timeout)
             await self._on_publish_success.run(reset=False)
 
@@ -77,10 +78,10 @@ class BaseProducer(t.Generic[Message, Channel], metaclass=abc.ABCMeta):
         if self._stopped:
             return None
 
-        # 确保push完成
+        # 先标记停止拒绝新投递，再等待在途投递完成，避免清理期间仍有写入
+        self._stopped = True
         await self._pub_waiter.wait()
         await self._on_cleanup.run(reset=True)
-        self._stopped = True
         return None
 
     async def join(self) -> None:

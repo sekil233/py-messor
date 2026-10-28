@@ -15,9 +15,12 @@
 
 `queue` 是 py-messor 对「一条通道」的抽象：它底层可以是 `asyncio.Queue`、RabbitMQ、Redis 等，按需选择对应 `backend`。
 
+一条 `queue` 的运行链路：`push` 经由 **Producer** 写入 **Channel**（通道），**Consumer** 取出后交给 **PoolExecutor**（消费池）按并发上限调用你的协程；多条 `queue` 由 **App** 统一启停。
+
 ## 特点
 
 - **天然异步**：整个调用链都是 `async def`，与 `asyncio` 原生融合，全程无阻塞调用。
+- **高性能**：存储级后端生产端池化并发 `push`，消费端消费池并发执行。
 - **简单**：一个 `@app.queue` 装饰器即可，无需额外配置。
 
   ```python
@@ -30,9 +33,9 @@
       print(f"hello, {name}")
   ```
 - **灵活**：
-  - **自由投递**：`push` 可投递到任意已注册的 `queue`，内存队列与非内存队列可自由混用成链。
+  - **自由投递**：任意队列的 `push` 可互相调用，内存队列与非内存队列可自由混用成链。
   - **后端可选**：内存级（`asyncio.Queue`）与存储级（如 RabbitMQ）按需选择对应 `backend`。
-  - **队列级定制**：每个 `queue` 独立配置 `backend`、`serializer`、`pool_executor`、消费并发等，互不影响。
+  - **队列级定制**：每个 `queue` 独立配置 `backend`、`serializer_cls`、`consumer_pool_executor_cls`、`consumer_pool_maxsize` 等，互不影响。
 
 ## 安装
 
@@ -96,7 +99,7 @@ await process_order(1)
 
 - `rate_limit`：消费速率 `<n>/<unit>`，如 `100/s`、`50/m`、`10/h`、`5/d`；`None`（默认）不限流。
 - `rate_limiter`：算法，`RateLimiter.TOKEN_BUCKET`（默认）、`RateLimiter.FIXED_WINDOW`、`RateLimiter.LEAKY_BUCKET`。
-- `rate_limit_storage`：计数存储，`RateLimitStorage.MEMORY`（默认，进程内存）；可扩展 Redis 等持久化存储实现跨实例共享计数。
+- `rate_limit_storage`：计数存储，当前仅内置 `RateLimitStorage.MEMORY`（进程内存），多实例各自计数；后续将支持 Redis 等持久化存储，实现跨实例全局限流。
 - `rate_limit_key`：限流桶 key，默认取队列逻辑名、前缀 `messor:rate:`（如 `messor:rate:process_order`）；可覆盖，共享同一存储时自定义作用域。
 
 ### 示例
@@ -109,6 +112,20 @@ async def process_order(order_id: int) -> None:
 
 > 注意：内存存储的计数在进程重启后清零，多实例部署下各自计数、不满足全局限流；`/h`、`/d` 等长窗口会整窗驻留内存。此时代码会发出 `UserWarning`，建议改用持久化存储。
 
+## 生产者池
+
+用于并发push提速。内存级Backend不适用（如`Backend.QUEUE`）。
+
+- `producer_pool_maxsize`：发布 channel 池大小，默认 `3`，并发 `push` 至多开出这么多 channel；`None` 表示不池化，单 channel 常驻复用。
+
+## 消费池`PoolExecutor`
+
+用于按并发上限执行消费协程，插件式，可替换实现。
+
+- `consumer_pool_executor_cls`：消费池类，默认 `PoolExecutor`；可继承 `BasePoolExecutor` 自定义。
+- `consumer_pool_maxsize`：消费并发上限，默认 `200`。
+
+<!--
 ## 内部结构
 
 `@app.queue` 装饰的协程就是一条队列。`push` 投到它自己这条队列上。
@@ -123,13 +140,14 @@ async def process_order(order_id: int) -> None:
 
 ```mermaid
 flowchart TB
-  PUSH["await f.push(...)"] --> B["Broker"]
-  B --> PRO["Producer"]
-  PRO -->|Serializer.pack| Q[("Queue")]
-  Q -->|Serializer.unpack| CON["Consumer"]
-  CON -->|submit| POOL["PoolExecutor"]
-  POOL -->|call| FN["await f(...)"]
+  PUSH["await f.push(...)"] -> B["Broker"]
+  B -> PRO["Producer"]
+  PRO ->|Serializer.pack| Q[("Channel")]
+  Q ->|Serializer.unpack| CON["Consumer"]
+  CON ->|submit| POOL["PoolExecutor"]
+  POOL ->|call| FN["await f(...)"]
 ```
+-->
 
 ## 测试
 

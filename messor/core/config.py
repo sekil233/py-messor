@@ -44,3 +44,5 @@ class Config:
 
     ## producer
     publish_timeout: float | None = None
+    # 生产者对象池规模，由各 backend 自行使用；None 表示不使用池
+    producer_pool_maxsize: int | None = 3

@@ -96,6 +96,11 @@ class FakeChannel:
         self.qos: dict | None = None
         self.closed = False
 
+    @property
+    def is_closed(self) -> bool:
+
+        return self.closed
+
     async def declare_queue(self, name: str, **kwargs):
 
         self.declared.append((name, kwargs))

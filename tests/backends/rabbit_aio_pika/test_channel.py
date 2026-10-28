@@ -81,7 +81,7 @@ async def test_connection_closes_only_after_the_last_channel():
         second = await channel.get_channel()
 
         assert len(world.urls) == 1
-        assert channel._active_channel_num == 2
+        assert channel.manager._active_channel_num == 2
 
         await channel.close_channel(first)
         await channel.try_close_connection()
@@ -93,7 +93,7 @@ async def test_connection_closes_only_after_the_last_channel():
     assert first.closed is True
     assert second.closed is True
     assert world.connection.closed is True
-    assert channel._active_channel_num == 0
+    assert channel.manager._active_channel_num == 0
 
 
 @run_async
@@ -107,7 +107,7 @@ async def test_connection_reconnects_after_close():
         await channel.close_channel(first)
         await channel.try_close_connection()
 
-        assert channel._conn is None
+        assert channel.manager._conn is None
         assert world.connection.closed is True
 
         # 已关闭时重复调用不触发重连也不报错（幂等）
@@ -116,7 +116,7 @@ async def test_connection_reconnects_after_close():
 
         second = await channel.get_channel()
         assert len(world.urls) == 2
-        assert channel._conn is world.connection
+        assert channel.manager._conn is world.connection
         assert world.connection.closed is False
         assert second.closed is False
 
@@ -124,4 +124,4 @@ async def test_connection_reconnects_after_close():
         await channel.try_close_connection()
 
     assert len(world.urls) == 2
-    assert channel._active_channel_num == 0
+    assert channel.manager._active_channel_num == 0
