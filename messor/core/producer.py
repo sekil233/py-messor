@@ -4,16 +4,16 @@ import abc
 import asyncio
 import typing as t
 
-from messor.core.resource import Resource
+from messor.core.channel import Channel
 from messor.serializer.base import Message
 from messor.utils.hook import Hooks, HookOrder
 from messor.utils.waiter import IdleWaiter
 
 
-class BaseProducer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
+class BaseProducer(t.Generic[Message, Channel], metaclass=abc.ABCMeta):
 
     __slots__ = (
-        "_resource",
+        "_channel",
         "_publish_timeout",
         "_stopped",
         "_pub_waiter",
@@ -25,10 +25,10 @@ class BaseProducer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
 
     def __init__(
             self,
-            resource: Resource,
+            channel: Channel,
             publish_timeout: float | None):
 
-        self._resource = resource
+        self._channel = channel
         self._publish_timeout = publish_timeout
         self._stopped = False
         self._pub_waiter = IdleWaiter()
@@ -52,7 +52,7 @@ class BaseProducer(t.Generic[Message, Resource], metaclass=abc.ABCMeta):
             raise RuntimeError("publish called on already stopped")
 
         timeout = self._publish_timeout if timeout is None else timeout
-        packed = self._resource.serializer.pack(coro_args, coro_kwargs)
+        packed = self._channel.serializer.pack(coro_args, coro_kwargs)
         async with self._pub_waiter.hold():
             await self._publish(packed, timeout=timeout)
             await self._on_publish_success.run(reset=False)

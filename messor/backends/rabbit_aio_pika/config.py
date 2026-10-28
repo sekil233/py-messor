@@ -28,7 +28,7 @@ class DeliveryMode(IntEnum):
 @pyd_dataclass(frozen=True, config=ExtraIgnoreConfig, kw_only=True)
 class Config(_Config):
 
-    ## shared resource
+    ## shared channel
     # amqp://user:password@host/vhost?heartbeat=60&x=y
     url: str
     queue_name: str

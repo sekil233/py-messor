@@ -3,17 +3,16 @@
 from messor.backends.rabbit_aio_pika.consumer import Consumer
 from messor.pool_executor.general import PoolExecutor
 from messor.serializer.orjson_ser import Serializer
-from messor.backends.rabbit_aio_pika.resource import Resource
+from messor.backends.rabbit_aio_pika.channel import Channel
 
 from tests.helpers import run_async
 from tests.rabbit_aio_pika_fakes import FakeIncoming, FakeWorld, patch_connect, wait_until
 
 
-def _resource(world: FakeWorld) -> Resource:
+def _channel(world: FakeWorld) -> Channel:
 
-    return Resource(
+    return Channel(
         serializer_cls=Serializer,
-        name="q",
         url="amqp://guest:guest@127.0.0.1/",
         queue_name="jobs",
         enable_declare_queue=False,
@@ -25,10 +24,11 @@ def _resource(world: FakeWorld) -> Resource:
     )
 
 
-def _consumer(resource: Resource, handler) -> Consumer:
+def _consumer(channel: Channel, handler) -> Consumer:
 
     return Consumer(
-        resource=resource,
+        channel=channel,
+        name="q",
         prefetch_count=3,
         prefetch_size=0,
         global_qos=False,
@@ -48,7 +48,7 @@ async def test_consume_unpacks_and_acks():
     async def handler(a, b, *, c):
         received.append((a, b, c))
 
-    consumer = _consumer(_resource(world), handler)
+    consumer = _consumer(_channel(world), handler)
     message = FakeIncoming(Serializer.pack((1, 2), {"c": 3}))
 
     with patch_connect(world):

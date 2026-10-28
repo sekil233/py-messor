@@ -4,7 +4,7 @@ import abc
 import typing as t
 
 from messor.serializer.base import Message
-from messor.core.resource import Resource
+from messor.core.channel import Channel
 
 if t.TYPE_CHECKING:
     from messor.core.config import Config

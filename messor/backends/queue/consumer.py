@@ -3,12 +3,12 @@
 import asyncio
 
 from messor.serializer.base import Message
-from messor.backends.queue.resource import Resource
+from messor.backends.queue.channel import Channel
 from messor.core._inflight import dec
 from messor.core.consumer import BaseConsumer as _BaseConsumer
 
 
-class Consumer(_BaseConsumer[Message, Resource]):
+class Consumer(_BaseConsumer[Message, Channel]):
 
     __slots__ = ()
 
@@ -20,7 +20,7 @@ class Consumer(_BaseConsumer[Message, Resource]):
     
     async def _consume_once(self) -> Message | None:
 
-        queue = self._resource.queue
+        queue = self._channel.queue
         try:
             message: Message = await asyncio.wait_for(
                 queue.get(),
@@ -35,7 +35,7 @@ class Consumer(_BaseConsumer[Message, Resource]):
 
     async def _drain(self) -> None:
 
-        queue = self._resource.queue
+        queue = self._channel.queue
         while not queue.empty():
             message: Message = queue.get_nowait()
             await self._dispatch(message)
@@ -43,5 +43,5 @@ class Consumer(_BaseConsumer[Message, Resource]):
 
     async def _on_shutdown(self) -> None:
 
-        await self._resource.queue.join()
+        await self._channel.queue.join()
         await self._pool_executor.obj.join()

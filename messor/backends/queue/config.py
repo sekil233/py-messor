@@ -12,6 +12,6 @@ from messor.serializer.raw import Serializer
 @pyd_dataclass(frozen=True, config=ExtraIgnoreConfig)
 class Config(_Config):
 
-    ## shared resource
+    ## shared channel
     maxsize: int = 200
     serializer_cls: type[BaseSerializer] = Serializer

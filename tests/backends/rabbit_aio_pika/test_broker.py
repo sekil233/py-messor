@@ -29,8 +29,8 @@ async def test_broker_shares_one_connection_until_both_sides_release():
     world = FakeWorld()
     broker = Broker(config)
 
-    assert broker._producer._resource is broker._consumer._resource
-    assert broker._producer._resource.serializer is Serializer
+    assert broker._producer._channel is broker._consumer._channel
+    assert broker._producer._channel.serializer is Serializer
 
     with patch_connect(world):
         await broker.start_consumer()

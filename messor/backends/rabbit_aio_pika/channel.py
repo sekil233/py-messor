@@ -6,14 +6,14 @@ import typing as t
 import aio_pika
 
 from messor.utils.deco import before
-from messor.core.resource import BaseResource as _Base
+from messor.core.channel import BaseChannel as _Base
 from messor.serializer.base import Message, BaseSerializer
 
 if t.TYPE_CHECKING:
     from aio_pika.abc import AbstractConnection, AbstractChannel, AbstractQueue
 
 
-class Resource(_Base[Message]):
+class Channel(_Base[Message]):
 
     __slots__ = (
         "_queue_name",
@@ -32,7 +32,6 @@ class Resource(_Base[Message]):
     def __init__(
             self,
             serializer_cls: type[BaseSerializer],
-            name: str,
             url: str,
             queue_name: str,
             enable_declare_queue: bool,
@@ -42,7 +41,7 @@ class Resource(_Base[Message]):
             queue_auto_delete: bool,
             queue_arguments: dict[str, t.Any] | None):
 
-        super().__init__(serializer_cls, name)
+        super().__init__(serializer_cls)
         self._queue_name = queue_name
         self._url = url
         self._conn: "AbstractConnection | None" = None

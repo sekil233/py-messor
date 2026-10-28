@@ -8,17 +8,16 @@ from messor.backends.rabbit_aio_pika.config import DeliveryMode, ExchangeName
 from messor.errors import PublishTimeoutError
 from messor.backends.rabbit_aio_pika.producer import Producer
 from messor.serializer.orjson_ser import Serializer
-from messor.backends.rabbit_aio_pika.resource import Resource
+from messor.backends.rabbit_aio_pika.channel import Channel
 
 from tests.helpers import run_async
 from tests.rabbit_aio_pika_fakes import FakeWorld, patch_connect, wait_until
 
 
-def _resource(world: FakeWorld) -> Resource:
+def _channel(world: FakeWorld) -> Channel:
 
-    return Resource(
+    return Channel(
         serializer_cls=Serializer,
-        name="q",
         url="amqp://guest:guest@127.0.0.1/",
         queue_name="jobs",
         enable_declare_queue=False,
@@ -30,10 +29,10 @@ def _resource(world: FakeWorld) -> Resource:
     )
 
 
-def _producer(resource: Resource, **kwargs) -> Producer:
+def _producer(channel: Channel, **kwargs) -> Producer:
 
     values = dict(
-        resource=resource,
+        channel=channel,
         publish_timeout=None,
         exchange_name=ExchangeName.DEFAULT,
         routing_key="",
@@ -47,8 +46,8 @@ def _producer(resource: Resource, **kwargs) -> Producer:
 async def test_publish_uses_default_exchange_and_queue_name():
 
     world = FakeWorld()
-    resource = _resource(world)
-    producer = _producer(resource)
+    channel = _channel(world)
+    producer = _producer(channel)
 
     with patch_connect(world):
         await producer.publish((1, 2), {"c": 3})
@@ -67,9 +66,9 @@ async def test_publish_uses_default_exchange_and_queue_name():
 async def test_publish_uses_named_exchange_and_routing_key():
 
     world = FakeWorld()
-    resource = _resource(world)
+    channel = _channel(world)
     producer = _producer(
-        resource,
+        channel,
         exchange_name=ExchangeName.TOPIC,
         routing_key="rk",
         delivery_mode=DeliveryMode.NOT_PERSISTENT,
@@ -91,8 +90,8 @@ async def test_publish_uses_named_exchange_and_routing_key():
 async def test_publish_timeout_raises_publish_timeout_error():
 
     world = FakeWorld()
-    resource = _resource(world)
-    producer = _producer(resource)
+    channel = _channel(world)
+    producer = _producer(channel)
 
     with patch_connect(world):
         channel_holder: list = []
@@ -116,8 +115,8 @@ async def test_publish_timeout_raises_publish_timeout_error():
 async def test_stop_waits_for_inflight_publish_then_closes():
 
     world = FakeWorld()
-    resource = _resource(world)
-    producer = _producer(resource)
+    channel = _channel(world)
+    producer = _producer(channel)
 
     with patch_connect(world):
         world_exchange_block = asyncio.Event()
@@ -157,7 +156,7 @@ async def test_stop_waits_for_inflight_publish_then_closes():
 async def test_publish_after_stop_raises():
 
     world = FakeWorld()
-    producer = _producer(_resource(world))
+    producer = _producer(_channel(world))
 
     with patch_connect(world):
         await producer.stop()

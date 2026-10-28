@@ -154,7 +154,7 @@ class FakeWorld:
 def patch_connect(world: FakeWorld):
 
     with patch(
-            "messor.backends.rabbit_aio_pika.resource.aio_pika.connect_robust",
+            "messor.backends.rabbit_aio_pika.channel.aio_pika.connect_robust",
             world.connect_robust,
     ):
         yield world

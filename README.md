@@ -113,7 +113,7 @@ async def process_order(order_id: int) -> None:
 
 `@app.queue` 装饰的协程就是一条队列。`push` 投到它自己这条队列上。
 
-- **Broker** 组装生产者、消费者和双方共用的资源，并提供启停与投递入口。
+- **Broker** 组装生产者、消费者和双方共享的 Channel（传输通道），并提供启停与投递入口。
 - **Producer** 序列化后把数据写入队列。
 - **Serializer** 处理入队出队的序列化操作。
 - **Consumer** 取出数据，反序列化后交给消费池。

@@ -57,10 +57,10 @@ async def test_broker_producer_and_consumer_share_serializer():
         Config(coro=noop, name="q", consume_timeout=0.05, maxsize=1),
     )
 
-    resource = broker._producer._resource
+    channel = broker._producer._channel
 
-    assert resource is broker._consumer._resource
-    assert resource.serializer is Serializer
+    assert channel is broker._consumer._channel
+    assert channel.serializer is Serializer
 
 
 @run_async
